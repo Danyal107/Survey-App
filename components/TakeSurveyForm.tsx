@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useId, useState } from 'react';
-import type { SurveyQuestion } from '@/types/survey';
+import { useCallback, useEffect, useId, useState } from "react";
+import type { SurveyQuestion } from "@/types/survey";
 
 type SurveyDoc = {
   _id: string;
@@ -20,9 +20,9 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
 
   const [values, setValues] = useState<Record<string, string | string[]>>({});
 
-  const [shopName, setShopName] = useState('');
-  const [respondentName, setRespondentName] = useState('');
-  const [whatsappContact, setWhatsappContact] = useState('');
+  const [shopName, setShopName] = useState("");
+  const [respondentName, setRespondentName] = useState("");
+  const [whatsappContact, setWhatsappContact] = useState("");
   const [shopImageUrls, setShopImageUrls] = useState<string[]>([]);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
 
@@ -32,22 +32,22 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
       const res = await fetch(`/api/surveys/${surveyId}`);
       const data = await res.json();
       if (!res.ok) {
-        setErr(data.error ?? 'Not found');
+        setErr(data.error ?? "Not found");
         return;
       }
       setSurvey({
         _id: data._id,
         title: data.title,
-        description: data.description ?? '',
+        description: data.description ?? "",
         questions: data.questions ?? [],
       });
       const init: Record<string, string | string[]> = {};
       for (const q of data.questions ?? []) {
-        init[q.id] = q.type === 'multiple' ? [] : '';
+        init[q.id] = q.type === "multiple" ? [] : "";
       }
       setValues(init);
     } catch {
-      setErr('Network error');
+      setErr("Network error");
     } finally {
       setLoading(false);
     }
@@ -60,32 +60,31 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
   async function uploadShopImage(file: File) {
     if (shopImageUrls.length >= 3) return;
     const fd = new FormData();
-    fd.append('file', file);
-    const res = await fetch('/api/upload/shop-image', {
-      method: 'POST',
+    fd.append("file", file);
+    const res = await fetch("/api/upload/shop-image", {
+      method: "POST",
       body: fd,
     });
     const data = await res.json();
     if (!res.ok) {
-      throw new Error(data.error ?? 'Upload failed');
+      throw new Error(data.error ?? "Upload failed");
     }
-    if (typeof data.url !== 'string') {
-      throw new Error('Invalid upload response');
+    if (typeof data.url !== "string") {
+      throw new Error("Invalid upload response");
     }
     setShopImageUrls((prev) => [...prev, data.url].slice(0, 3));
   }
 
   async function onShopImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    e.target.value = '';
+    e.target.value = "";
     if (!file || shopImageUrls.length >= 3) return;
-    const slot = shopImageUrls.length;
-    setUploadingIndex(slot);
+    setUploadingIndex(shopImageUrls.length);
     setErr(null);
     try {
       await uploadShopImage(file);
     } catch (c) {
-      setErr(c instanceof Error ? c.message : 'Upload failed');
+      setErr(c instanceof Error ? c.message : "Upload failed");
     } finally {
       setUploadingIndex(null);
     }
@@ -112,69 +111,126 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
     };
     try {
       const res = await fetch(`/api/surveys/${surveyId}/responses`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ respondentInfo, answers }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setErr(data.error ?? 'Submit failed');
+        setErr(data.error ?? "Submit failed");
         return;
       }
       setDone(true);
     } catch {
-      setErr('Network error');
+      setErr("Network error");
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (loading) return <p className="text-[var(--muted)]">Loading survey…</p>;
-  if (err && !survey) return <p className="text-red-400">{err}</p>;
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-xl space-y-6 animate-pulse">
+        <div className="h-10 w-3/4 max-w-md rounded-xl bg-zinc-800" />
+        <div className="h-24 rounded-2xl bg-zinc-800/80" />
+        <div className="h-48 rounded-2xl bg-zinc-800/60" />
+        <div className="h-32 rounded-2xl bg-zinc-800/50" />
+      </div>
+    );
+  }
+  if (err && !survey) {
+    return (
+      <div className="mx-auto max-w-lg rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-6 text-center text-red-200">
+        {err}
+      </div>
+    );
+  }
   if (!survey) return null;
 
   if (done) {
     return (
-      <div className="mx-auto max-w-lg rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-8 text-center">
-        <h1 className="text-xl font-semibold text-white">Thank you</h1>
-        <p className="mt-2 text-[var(--muted)]">
-          Your response has been recorded.
-        </p>
+      <div className="mx-auto max-w-md text-center">
+        <div className="surface-card border-emerald-500/25 bg-gradient-to-b from-emerald-500/10 to-transparent px-8 py-10 shadow-lg shadow-emerald-950/20">
+          <div
+            className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/20 text-2xl ring-1 ring-emerald-400/30"
+            aria-hidden
+          >
+            ✓
+          </div>
+          <h1 className="text-2xl font-bold text-white">Thank you</h1>
+          <p className="mt-3 text-[var(--muted)] leading-relaxed">
+            Your response has been recorded. You can close this page.
+          </p>
+        </div>
       </div>
     );
   }
 
   const hasQuestions = survey.questions.length > 0;
 
+  const optionBase =
+    "flex cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-3 transition duration-150";
+  const optionIdle =
+    "border-[var(--border)] bg-zinc-950/50 hover:border-zinc-600 hover:bg-zinc-900/60";
+  const optionActive =
+    "border-[var(--accent)]/45 bg-[var(--accent-muted)] ring-1 ring-indigo-500/20";
+
   return (
-    <form onSubmit={submit} className="mx-auto max-w-xl space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold text-white">{survey.title}</h1>
+    <form onSubmit={submit} className="mx-auto max-w-xl space-y-8 pb-8">
+      <header className="surface-card overflow-hidden p-6 sm:p-8">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-hover)]">
+          Survey
+        </p>
+        <h1 className="mt-2 text-balance text-2xl font-bold tracking-tight text-white sm:text-3xl">
+          {survey.title}
+        </h1>
         {survey.description ? (
-          <p className="mt-2 text-[var(--muted)]">{survey.description}</p>
+          <p className="mt-3 text-[15px] leading-relaxed text-[var(--muted)]">
+            {survey.description}
+          </p>
         ) : null}
-      </div>
+      </header>
 
       {hasQuestions ? (
         <section
-          className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5"
+          className="surface-card p-6 sm:p-8"
           aria-labelledby={`${formId}-info-heading`}
         >
-          <h2
-            id={`${formId}-info-heading`}
-            className="text-base font-semibold text-white"
-          >
-            Your details
-          </h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Shop name, your name, WhatsApp number, and up to three shop photos.
-          </p>
-          <div className="mt-5 space-y-4">
-            <div>
-              <label
-                htmlFor={`${formId}-shop`}
-                className="block text-sm font-medium text-zinc-300"
+          <div className="flex items-start gap-3 border-b border-[var(--border)]/80 pb-5">
+            <span
+              className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-muted)] text-[var(--accent-hover)] ring-1 ring-indigo-500/15"
+              aria-hidden
+            >
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
               >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </span>
+            <div>
+              <h2
+                id={`${formId}-info-heading`}
+                className="text-lg font-semibold text-white"
+              >
+                Your details
+              </h2>
+              <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">
+                Shop name, your name, WhatsApp, and up to three shop photos
+                (optional).
+              </p>
+            </div>
+          </div>
+          <div className="mt-6 space-y-5">
+            <div>
+              <label htmlFor={`${formId}-shop`} className="label-field">
                 Shop name <span className="text-red-400">*</span>
               </label>
               <input
@@ -183,16 +239,13 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
                 required
                 value={shopName}
                 onChange={(e) => setShopName(e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-[var(--border)] bg-zinc-900 px-3 py-2 text-white outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                className="input-field mt-2"
                 placeholder="e.g. Khan General Store"
                 maxLength={300}
               />
             </div>
             <div>
-              <label
-                htmlFor={`${formId}-person`}
-                className="block text-sm font-medium text-zinc-300"
-              >
+              <label htmlFor={`${formId}-person`} className="label-field">
                 Your name <span className="text-red-400">*</span>
               </label>
               <input
@@ -201,16 +254,13 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
                 required
                 value={respondentName}
                 onChange={(e) => setRespondentName(e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-[var(--border)] bg-zinc-900 px-3 py-2 text-white outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                className="input-field mt-2"
                 placeholder="Person filling this survey"
                 maxLength={300}
               />
             </div>
             <div>
-              <label
-                htmlFor={`${formId}-wa`}
-                className="block text-sm font-medium text-zinc-300"
-              >
+              <label htmlFor={`${formId}-wa`} className="label-field">
                 WhatsApp number <span className="text-red-400">*</span>
               </label>
               <input
@@ -220,34 +270,36 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
                 required
                 value={whatsappContact}
                 onChange={(e) => setWhatsappContact(e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-[var(--border)] bg-zinc-900 px-3 py-2 text-white outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                className="input-field mt-2"
                 placeholder="+92 300 1234567"
                 maxLength={40}
               />
             </div>
             <div>
-              <span className="block text-sm font-medium text-zinc-300">
-                Shop images (optional, up to 3)
+              <span className="label-field">
+                Shop images{" "}
+                <span className="font-normal text-zinc-500">(optional, max 3)</span>
               </span>
-              <p className="mt-0.5 text-xs text-[var(--muted)]">
-                Take a new photo (opens the camera on phones) or pick from your
-                gallery. JPEG, PNG, WebP, or GIF — max 5 MB each.
+              <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
+                Use your camera on mobile, or pick from your gallery. JPEG,
+                PNG, WebP, or GIF — up to 5 MB each.
               </p>
-              <div className="mt-2 flex flex-wrap items-center gap-3">
+              <div className="mt-3 flex flex-wrap items-center gap-3">
                 {shopImageUrls.map((url) => (
                   <div
                     key={url}
-                    className="relative h-20 w-20 overflow-hidden rounded-lg border border-[var(--border)] bg-zinc-900"
+                    className="relative h-24 w-24 overflow-hidden rounded-xl border border-[var(--border)] bg-zinc-900 shadow-inner"
                   >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={url}
-                      alt="Shop"
+                      alt="Shop preview"
                       className="h-full w-full object-cover"
                     />
                     <button
                       type="button"
                       onClick={() => removeShopImage(url)}
-                      className="absolute right-0.5 top-0.5 rounded bg-black/70 px-1.5 py-0.5 text-xs text-white hover:bg-black"
+                      className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-lg bg-black/75 text-sm text-white backdrop-blur-sm transition hover:bg-red-500/90"
                       aria-label="Remove image"
                     >
                       ×
@@ -256,10 +308,13 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
                 ))}
                 {shopImageUrls.length < 3 ? (
                   uploadingIndex !== null ? (
-                    <p className="text-sm text-[var(--muted)]">Uploading…</p>
+                    <p className="flex items-center gap-2 text-sm text-[var(--muted)]">
+                      <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-zinc-600 border-t-[var(--accent)]" />
+                      Uploading…
+                    </p>
                   ) : (
                     <div className="flex flex-wrap gap-2">
-                      <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-dashed border-zinc-600 bg-zinc-900/50 px-3 py-2.5 text-sm text-zinc-300 hover:border-[var(--accent)] hover:text-white">
+                      <label className="btn-secondary cursor-pointer border-dashed py-2.5 text-xs sm:text-sm">
                         Take photo
                         <input
                           type="file"
@@ -270,7 +325,7 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
                           aria-label="Take a photo with the camera"
                         />
                       </label>
-                      <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-dashed border-zinc-600 bg-zinc-900/50 px-3 py-2.5 text-sm text-zinc-300 hover:border-[var(--accent)] hover:text-white">
+                      <label className="btn-secondary cursor-pointer border-dashed py-2.5 text-xs sm:text-sm">
                         Gallery
                         <input
                           type="file"
@@ -290,10 +345,12 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
       ) : null}
 
       {!hasQuestions ? (
-        <p className="text-[var(--muted)]">This survey has no questions yet.</p>
+        <p className="rounded-xl border border-dashed border-[var(--border)] bg-zinc-900/30 px-4 py-6 text-center text-[var(--muted)]">
+          This survey has no questions yet.
+        </p>
       ) : null}
 
-      <div className="space-y-8">
+      <div className="space-y-5">
         {survey.questions.map((q, i) => {
           const headingId = `${formId}-q-${q.id}`;
           return (
@@ -301,89 +358,102 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
               key={q.id}
               role="group"
               aria-labelledby={headingId}
-              className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5"
+              className="surface-card p-6 sm:p-8"
             >
               <h2
                 id={headingId}
-                className="text-base font-medium leading-snug text-white"
+                className="text-balance text-lg font-semibold leading-snug text-white"
               >
-                <span className="text-zinc-400">{i + 1}.</span>{' '}
-                {q.text || '(Untitled question)'}
+                <span className="mr-1.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-zinc-800 text-sm font-bold text-zinc-400">
+                  {i + 1}
+                </span>
+                {q.text || "(Untitled question)"}
                 {q.required ? (
                   <span className="text-red-400" aria-hidden="true">
-                    {' '}
+                    {" "}
                     *
                   </span>
                 ) : null}
               </h2>
 
-              <div className="mt-4">
-                {q.type === 'text' && (
+              <div className="mt-5">
+                {q.type === "text" && (
                   <textarea
                     required={q.required}
-                    value={(values[q.id] as string) ?? ''}
+                    value={(values[q.id] as string) ?? ""}
                     onChange={(e) =>
                       setValues((v) => ({ ...v, [q.id]: e.target.value }))
                     }
-                    rows={3}
-                    className="w-full rounded-lg border border-[var(--border)] bg-zinc-900 px-3 py-2 text-white outline-none focus:ring-2 focus:ring-[var(--accent)]"
-                    placeholder="Your answer"
+                    rows={4}
+                    className="input-field min-h-[6.5rem] resize-y"
+                    placeholder="Type your answer here…"
                     aria-labelledby={headingId}
                   />
                 )}
 
-                {q.type === 'single' && (
+                {q.type === "single" && (
                   <ul
-                    className="space-y-1"
+                    className="space-y-2"
                     role="radiogroup"
                     aria-labelledby={headingId}
                   >
-                    {q.options.map((opt, optIndex) => (
-                      <li key={`${q.id}-single-${optIndex}`}>
-                        <label className="flex cursor-pointer items-center gap-3 rounded-lg py-2 pl-0 pr-2 hover:bg-zinc-800/60">
-                          <input
-                            type="radio"
-                            name={q.id}
-                            required={q.required}
-                            value={opt}
-                            checked={(values[q.id] as string) === opt}
-                            onChange={() =>
-                              setValues((v) => ({ ...v, [q.id]: opt }))
-                            }
-                            className="shrink-0 border-zinc-600 text-[var(--accent)] focus:ring-[var(--accent)]"
-                          />
-                          <span className="text-zinc-200">{opt}</span>
-                        </label>
-                      </li>
-                    ))}
+                    {q.options.map((opt, optIndex) => {
+                      const checked = (values[q.id] as string) === opt;
+                      return (
+                        <li key={`${q.id}-single-${optIndex}`}>
+                          <label
+                            className={`${optionBase} ${checked ? optionActive : optionIdle}`}
+                          >
+                            <input
+                              type="radio"
+                              name={q.id}
+                              required={q.required}
+                              value={opt}
+                              checked={checked}
+                              onChange={() =>
+                                setValues((v) => ({ ...v, [q.id]: opt }))
+                              }
+                              className="shrink-0 border-zinc-600 text-[var(--accent)] focus:ring-[var(--ring)]"
+                            />
+                            <span className="text-[15px] text-zinc-200">
+                              {opt}
+                            </span>
+                          </label>
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
 
-                {q.type === 'multiple' && (
-                  <ul className="space-y-1" aria-labelledby={headingId}>
+                {q.type === "multiple" && (
+                  <ul className="space-y-2" aria-labelledby={headingId}>
                     {q.options.map((opt, optIndex) => {
                       const selected = (
                         (values[q.id] as string[]) ?? []
                       ).includes(opt);
                       return (
                         <li key={`${q.id}-multi-${optIndex}`}>
-                          <label className="flex cursor-pointer items-center gap-3 rounded-lg py-2 pl-0 pr-2 hover:bg-zinc-800/60">
+                          <label
+                            className={`${optionBase} ${selected ? optionActive : optionIdle}`}
+                          >
                             <input
                               type="checkbox"
                               checked={selected}
                               onChange={() => {
                                 setValues((v) => {
                                   const cur = new Set(
-                                    (v[q.id] as string[]) ?? [],
+                                    (v[q.id] as string[]) ?? []
                                   );
                                   if (cur.has(opt)) cur.delete(opt);
                                   else cur.add(opt);
                                   return { ...v, [q.id]: [...cur] };
                                 });
                               }}
-                              className="shrink-0 rounded border-zinc-600 text-[var(--accent)] focus:ring-[var(--accent)]"
+                              className="shrink-0 rounded border-zinc-600 text-[var(--accent)] focus:ring-[var(--ring)]"
                             />
-                            <span className="text-zinc-200">{opt}</span>
+                            <span className="text-[15px] text-zinc-200">
+                              {opt}
+                            </span>
                           </label>
                         </li>
                       );
@@ -397,7 +467,10 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
       </div>
 
       {err && (
-        <p className="text-sm text-red-400" role="alert">
+        <p
+          className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+          role="alert"
+        >
           {err}
         </p>
       )}
@@ -406,9 +479,9 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
         <button
           type="submit"
           disabled={submitting || uploadingIndex !== null}
-          className="w-full rounded-lg bg-[var(--accent)] py-3 font-medium text-white hover:bg-[var(--accent-hover)] disabled:opacity-50"
+          className="btn-primary w-full py-3.5 text-base"
         >
-          {submitting ? 'Submitting…' : 'Submit'}
+          {submitting ? "Submitting…" : "Submit responses"}
         </button>
       )}
     </form>

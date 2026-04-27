@@ -3,19 +3,101 @@
 @tailwind utilities;
 
 :root {
-  --background: #0c0c0f;
-  --foreground: #f4f4f5;
+  --background: #09090b;
+  --background-muted: #0c0c0f;
+  --foreground: #fafafa;
   --muted: #a1a1aa;
-  --card: #18181b;
+  --card: #141416;
+  --card-hover: #1a1a1e;
   --border: #27272a;
+  --border-strong: #3f3f46;
   --accent: #6366f1;
   --accent-hover: #818cf8;
+  --accent-muted: rgba(99, 102, 241, 0.14);
+  --ring: rgba(129, 140, 248, 0.45);
+  --success: #34d399;
+  --success-muted: rgba(52, 211, 153, 0.12);
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  min-height: 100vh;
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    color: var(--foreground);
+    background-color: var(--background);
+    min-height: 100vh;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-image:
+      radial-gradient(
+        ellipse 120% 70% at 50% -25%,
+        rgba(99, 102, 241, 0.14),
+        transparent 55%
+      ),
+      radial-gradient(
+        ellipse 50% 45% at 100% 0%,
+        rgba(59, 130, 246, 0.08),
+        transparent 50%
+      ),
+      radial-gradient(
+        ellipse 40% 35% at 0% 20%,
+        rgba(99, 102, 241, 0.05),
+        transparent 45%
+      );
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background: rgba(99, 102, 241, 0.35);
+    color: var(--foreground);
+  }
+}
+
+@layer components {
+  .surface-card {
+    @apply rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm shadow-black/20;
+  }
+
+  .surface-card-interactive {
+    @apply rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm shadow-black/20;
+    @apply transition duration-200 ease-out;
+    @apply hover:border-[var(--border-strong)] hover:bg-[var(--card-hover)] hover:shadow-md hover:shadow-black/25;
+  }
+
+  .input-field {
+    @apply w-full rounded-xl border border-[var(--border)] bg-zinc-950/80 px-3.5 py-2.5 text-[15px] text-zinc-100 placeholder:text-zinc-600;
+    @apply transition-colors duration-150;
+    @apply hover:border-zinc-600/90;
+    @apply focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)];
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-950/40;
+    @apply transition duration-150 ease-out;
+    @apply hover:bg-[var(--accent-hover)] hover:shadow-indigo-900/50;
+    @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)];
+    @apply active:scale-[0.99] disabled:pointer-events-none disabled:opacity-45;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-xl border border-[var(--border)] bg-zinc-900/50 px-4 py-2.5 text-sm font-medium text-zinc-200;
+    @apply transition duration-150;
+    @apply hover:border-[var(--border-strong)] hover:bg-zinc-800/80 hover:text-white;
+    @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-500;
+    @apply active:scale-[0.99] disabled:opacity-45;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium text-[var(--muted)];
+    @apply transition-colors hover:bg-zinc-800/60 hover:text-white;
+  }
+
+  .label-field {
+    @apply block text-sm font-medium text-zinc-300;
+  }
 }
 
 @layer utilities {

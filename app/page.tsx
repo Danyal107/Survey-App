@@ -5,8 +5,12 @@ import { Survey } from "@/models/Survey";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  let surveys: { _id: string; title: string; description: string; updatedAt: Date }[] =
-    [];
+  let surveys: {
+    _id: string;
+    title: string;
+    description: string;
+    updatedAt: Date;
+  }[] = [];
   let error: string | null = null;
 
   try {
@@ -27,19 +31,23 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-white">
+    <div className="space-y-10">
+      <header className="space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-hover)]">
+          Dashboard
+        </p>
+        <h1 className="text-balance text-3xl font-bold tracking-tight text-white sm:text-4xl">
           Your surveys
         </h1>
-        <p className="mt-2 text-[var(--muted)]">
-          Build forms, share the link, and explore response analytics.
+        <p className="max-w-xl text-base leading-relaxed text-[var(--muted)]">
+          Build forms, share a single link, and review answers with per-question
+          analytics—all in one place.
         </p>
-      </div>
+      </header>
 
       {error && (
         <div
-          className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
+          className="rounded-2xl border border-amber-500/35 bg-amber-500/[0.08] px-5 py-4 text-sm leading-relaxed text-amber-100 shadow-sm shadow-amber-950/20"
           role="alert"
         >
           {error}
@@ -47,50 +55,57 @@ export default async function HomePage() {
       )}
 
       {!error && surveys.length === 0 && (
-        <p className="text-[var(--muted)]">
-          No surveys yet.{" "}
-          <Link href="/surveys/new" className="text-[var(--accent)] hover:underline">
-            Create your first one
+        <div className="surface-card max-w-lg p-8 text-center">
+          <p className="text-[var(--muted)]">No surveys yet.</p>
+          <Link
+            href="/surveys/new"
+            className="btn-primary mt-6 w-full sm:w-auto"
+          >
+            Create your first survey
           </Link>
-          .
-        </p>
+        </div>
       )}
 
-      <ul className="grid gap-4 sm:grid-cols-2">
+      <ul className="grid gap-5 sm:grid-cols-2">
         {surveys.map((s) => (
-          <li
-            key={s._id}
-            className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-lg transition hover:border-zinc-600"
-          >
-            <h2 className="font-medium text-white">{s.title}</h2>
+          <li key={s._id} className="surface-card-interactive group p-6">
+            <h2 className="text-lg font-semibold tracking-tight text-white group-hover:text-indigo-50">
+              {s.title}
+            </h2>
             {s.description ? (
-              <p className="mt-1 line-clamp-2 text-sm text-[var(--muted)]">
+              <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-[var(--muted)]">
                 {s.description}
               </p>
-            ) : null}
-            <p className="mt-3 text-xs text-zinc-500">
+            ) : (
+              <p className="mt-2 text-sm italic text-zinc-600">No description</p>
+            )}
+            <p className="mt-4 flex items-center gap-2 text-xs text-zinc-500">
+              <span
+                className="inline-block h-1.5 w-1.5 rounded-full bg-zinc-600"
+                aria-hidden
+              />
               Updated{" "}
               {new Intl.DateTimeFormat(undefined, {
                 dateStyle: "medium",
                 timeStyle: "short",
               }).format(new Date(s.updatedAt))}
             </p>
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-5 flex flex-wrap gap-2 border-t border-[var(--border)]/60 pt-5">
               <Link
                 href={`/surveys/${s._id}/edit`}
-                className="rounded-lg bg-zinc-800 px-3 py-1.5 text-sm text-white hover:bg-zinc-700"
+                className="btn-secondary py-2 text-xs sm:text-sm"
               >
                 Edit
               </Link>
               <Link
                 href={`/surveys/${s._id}`}
-                className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--muted)] hover:text-white"
+                className="btn-ghost border border-transparent py-2 text-xs ring-1 ring-[var(--border)] hover:bg-zinc-800/80 sm:text-sm"
               >
-                Take
+                Take survey
               </Link>
               <Link
                 href={`/surveys/${s._id}/results`}
-                className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--accent-hover)]"
+                className="btn-primary py-2 text-xs sm:text-sm"
               >
                 Results
               </Link>

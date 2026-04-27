@@ -35,55 +35,61 @@ export default function NewSurveyPage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold text-white">New survey</h1>
-        <p className="mt-2 text-sm text-[var(--muted)]">
-          Name it, then add questions on the next screen.
+      <header className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-hover)]">
+          Create
         </p>
-      </div>
+        <h1 className="text-3xl font-bold tracking-tight text-white">
+          New survey
+        </h1>
+        <p className="text-sm leading-relaxed text-[var(--muted)]">
+          Give it a name and optional intro—you&apos;ll add questions on the
+          next screen.
+        </p>
+      </header>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form
+        onSubmit={handleSubmit}
+        className="surface-card space-y-5 p-6 sm:p-8"
+      >
         <div>
-          <label htmlFor="title" className="block text-sm font-medium text-zinc-300">
-            Title
+          <label htmlFor="title" className="label-field">
+            Title <span className="text-red-400">*</span>
           </label>
           <input
             id="title"
             required
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-[var(--border)] bg-zinc-900 px-3 py-2 text-white outline-none ring-[var(--accent)] focus:ring-2"
-            placeholder="Customer satisfaction Q2"
+            className="input-field mt-2"
+            placeholder="e.g. Retailer feedback — April"
           />
         </div>
         <div>
-          <label
-            htmlFor="description"
-            className="block text-sm font-medium text-zinc-300"
-          >
-            Description (optional)
+          <label htmlFor="description" className="label-field">
+            Description{" "}
+            <span className="font-normal text-zinc-500">(optional)</span>
           </label>
           <textarea
             id="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
-            className="mt-1 w-full rounded-lg border border-[var(--border)] bg-zinc-900 px-3 py-2 text-white outline-none ring-[var(--accent)] focus:ring-2"
-            placeholder="Short intro shown at the top of the survey"
+            className="input-field mt-2 min-h-[5.5rem] resize-y"
+            placeholder="Short text shown at the top of the live survey"
           />
         </div>
 
         {err && (
-          <p className="text-sm text-red-400" role="alert">
+          <p
+            className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200"
+            role="alert"
+          >
             {err}
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-lg bg-[var(--accent)] py-2.5 font-medium text-white hover:bg-[var(--accent-hover)] disabled:opacity-50"
-        >
+        <button type="submit" disabled={loading} className="btn-primary w-full">
           {loading ? "Creating…" : "Continue to builder"}
         </button>
       </form>

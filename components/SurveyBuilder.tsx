@@ -120,10 +120,20 @@ export function SurveyBuilder({ surveyId }: { surveyId: string }) {
   }
 
   if (loading) {
-    return <p className="text-[var(--muted)]">Loading…</p>;
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className="h-8 w-48 rounded-lg bg-zinc-800" />
+        <div className="h-40 rounded-2xl bg-zinc-800/80" />
+        <div className="h-64 rounded-2xl bg-zinc-800/60" />
+      </div>
+    );
   }
   if (err && !survey) {
-    return <p className="text-red-400">{err}</p>;
+    return (
+      <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-200">
+        {err}
+      </p>
+    );
   }
   if (!survey) return null;
 
@@ -146,39 +156,41 @@ export function SurveyBuilder({ surveyId }: { surveyId: string }) {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-white">Edit survey</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">
+    <div className="space-y-10">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+        <header className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-hover)]">
+            Editor
+          </p>
+          <h1 className="text-3xl font-bold tracking-tight text-white">
+            Edit survey
+          </h1>
+          <p className="max-w-xl text-sm leading-relaxed text-[var(--muted)]">
             Public link:{" "}
             <Link
               href={`/surveys/${surveyId}`}
-              className="text-[var(--accent)] hover:underline"
+              className="font-medium text-[var(--accent-hover)] underline decoration-indigo-500/40 underline-offset-2 hover:decoration-indigo-400"
             >
               /surveys/{surveyId}
             </Link>
           </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+        </header>
+        <div className="flex flex-shrink-0 flex-wrap gap-2">
           <button
             type="button"
             onClick={save}
             disabled={saving}
-            className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--accent-hover)] disabled:opacity-50"
+            className="btn-primary"
           >
-            {saving ? "Saving…" : "Save"}
+            {saving ? "Saving…" : "Save changes"}
           </button>
-          <Link
-            href={`/surveys/${surveyId}/results`}
-            className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--muted)] hover:text-white"
-          >
+          <Link href={`/surveys/${surveyId}/results`} className="btn-secondary">
             Results
           </Link>
           <button
             type="button"
             onClick={removeSurvey}
-            className="rounded-lg border border-red-500/40 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10"
+            className="rounded-xl border border-red-500/35 bg-red-500/5 px-4 py-2.5 text-sm font-medium text-red-300 transition hover:bg-red-500/15"
           >
             Delete
           </button>
@@ -186,40 +198,45 @@ export function SurveyBuilder({ surveyId }: { surveyId: string }) {
       </div>
 
       {(err || msg) && (
-        <p className={err ? "text-sm text-red-400" : "text-sm text-emerald-400"}>
+        <div
+          role="status"
+          className={
+            err
+              ? "rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+              : "rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200"
+          }
+        >
           {err ?? msg}
-        </p>
+        </div>
       )}
 
-      <div className="space-y-4 rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
+      <div className="surface-card space-y-5 p-6 sm:p-8">
         <div>
-          <label className="block text-sm font-medium text-zinc-300">Title</label>
+          <label className="label-field">Title</label>
           <input
             value={survey.title}
             onChange={(e) =>
               setSurvey((s) => (s ? { ...s, title: e.target.value } : s))
             }
-            className="mt-1 w-full rounded-lg border border-[var(--border)] bg-zinc-900 px-3 py-2 text-white outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            className="input-field mt-2"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-zinc-300">
-            Description
-          </label>
+          <label className="label-field">Description</label>
           <textarea
             value={survey.description}
             onChange={(e) =>
               setSurvey((s) => (s ? { ...s, description: e.target.value } : s))
             }
             rows={2}
-            className="mt-1 w-full rounded-lg border border-[var(--border)] bg-zinc-900 px-3 py-2 text-white outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            className="input-field mt-2 min-h-[4.5rem] resize-y"
           />
         </div>
       </div>
 
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium text-white">Questions</h2>
+      <div className="space-y-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-xl font-semibold text-white">Questions</h2>
           <button
             type="button"
             onClick={() =>
@@ -227,15 +244,15 @@ export function SurveyBuilder({ surveyId }: { surveyId: string }) {
                 s ? { ...s, questions: [...s.questions, newQuestion()] } : s
               )
             }
-            className="rounded-lg bg-zinc-800 px-3 py-1.5 text-sm text-white hover:bg-zinc-700"
+            className="btn-secondary w-full sm:w-auto"
           >
-            Add question
+            + Add question
           </button>
         </div>
 
         {survey.questions.length === 0 && (
-          <p className="text-sm text-[var(--muted)]">
-            No questions yet. Add one to publish a real survey.
+          <p className="rounded-xl border border-dashed border-[var(--border)] bg-zinc-900/30 px-5 py-8 text-center text-sm text-[var(--muted)]">
+            No questions yet. Add one so respondents have something to answer.
           </p>
         )}
 
@@ -243,11 +260,11 @@ export function SurveyBuilder({ surveyId }: { surveyId: string }) {
           {survey.questions.map((q, i) => (
             <li
               key={q.id}
-              className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5"
+              className="surface-card overflow-hidden shadow-md shadow-black/25"
             >
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                <span className="text-xs uppercase tracking-wide text-zinc-500">
-                  Question {i + 1}
+              <div className="flex items-center gap-3 border-b border-[var(--border)] bg-zinc-900/40 px-5 py-3">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-muted)] text-xs font-bold text-[var(--accent-hover)]">
+                  {i + 1}
                 </span>
                 <select
                   value={q.type}
@@ -256,20 +273,20 @@ export function SurveyBuilder({ surveyId }: { surveyId: string }) {
                       type: e.target.value as QuestionType,
                     })
                   }
-                  className="rounded-md border border-[var(--border)] bg-zinc-900 px-2 py-1 text-sm text-white"
+                  className="input-field max-w-[11rem] border-zinc-700/80 py-2 text-sm"
                 >
                   <option value="single">Single choice</option>
                   <option value="multiple">Multiple choice</option>
                   <option value="text">Short text</option>
                 </select>
-                <label className="ml-auto flex items-center gap-2 text-sm text-zinc-400">
+                <label className="ml-auto flex cursor-pointer items-center gap-2 text-sm text-zinc-400">
                   <input
                     type="checkbox"
                     checked={q.required}
                     onChange={(e) =>
                       updateQuestion(i, { required: e.target.checked })
                     }
-                    className="rounded border-zinc-600"
+                    className="rounded border-zinc-600 text-[var(--accent)] focus:ring-[var(--ring)]"
                   />
                   Required
                 </label>
@@ -285,59 +302,63 @@ export function SurveyBuilder({ surveyId }: { surveyId: string }) {
                         : s
                     )
                   }
-                  className="text-sm text-red-400 hover:underline"
+                  className="text-sm text-red-400/90 transition hover:text-red-300"
                 >
                   Remove
                 </button>
               </div>
-              <input
-                value={q.text}
-                onChange={(e) => updateQuestion(i, { text: e.target.value })}
-                placeholder="Question text"
-                className="mb-4 w-full rounded-lg border border-[var(--border)] bg-zinc-900 px-3 py-2 text-white outline-none focus:ring-2 focus:ring-[var(--accent)]"
-              />
+              <div className="space-y-4 p-5 sm:p-6">
+                <input
+                  value={q.text}
+                  onChange={(e) => updateQuestion(i, { text: e.target.value })}
+                  placeholder="Question text"
+                  className="input-field"
+                />
 
-              {q.type !== "text" && (
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-zinc-500">Answer options</p>
-                  {q.options.map((opt, oi) => (
-                    <div key={oi} className="flex gap-2">
-                      <input
-                        value={opt}
-                        onChange={(e) => {
-                          const options = [...q.options];
-                          options[oi] = e.target.value;
-                          updateQuestion(i, { options });
-                        }}
-                        placeholder={`Option ${oi + 1}`}
-                        className="flex-1 rounded-lg border border-[var(--border)] bg-zinc-900 px-3 py-1.5 text-sm text-white outline-none focus:ring-2 focus:ring-[var(--accent)]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const options = q.options.filter((_, j) => j !== oi);
-                          updateQuestion(i, {
-                            options: options.length ? options : [""],
-                          });
-                        }}
-                        className="text-zinc-500 hover:text-red-400"
-                        aria-label="Remove option"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateQuestion(i, { options: [...q.options, ""] })
-                    }
-                    className="text-sm text-[var(--accent)] hover:underline"
-                  >
-                    + Add option
-                  </button>
-                </div>
-              )}
+                {q.type !== "text" && (
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                      Answer options
+                    </p>
+                    {q.options.map((opt, oi) => (
+                      <div key={oi} className="flex gap-2">
+                        <input
+                          value={opt}
+                          onChange={(e) => {
+                            const options = [...q.options];
+                            options[oi] = e.target.value;
+                            updateQuestion(i, { options });
+                          }}
+                          placeholder={`Option ${oi + 1}`}
+                          className="input-field flex-1 py-2 text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const options = q.options.filter((_, j) => j !== oi);
+                            updateQuestion(i, {
+                              options: options.length ? options : [""],
+                            });
+                          }}
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] text-zinc-500 transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300"
+                          aria-label="Remove option"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateQuestion(i, { options: [...q.options, ""] })
+                      }
+                      className="text-sm font-medium text-[var(--accent-hover)] transition hover:text-indigo-200"
+                    >
+                      + Add option
+                    </button>
+                  </div>
+                )}
+              </div>
             </li>
           ))}
         </ul>
