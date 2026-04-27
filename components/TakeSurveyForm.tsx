@@ -230,7 +230,8 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
                 Shop images (optional, up to 3)
               </span>
               <p className="mt-0.5 text-xs text-[var(--muted)]">
-                JPEG, PNG, WebP, or GIF — max 5 MB each.
+                Take a new photo (opens the camera on phones) or pick from your
+                gallery. JPEG, PNG, WebP, or GIF — max 5 MB each.
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 {shopImageUrls.map((url) => (
@@ -254,16 +255,33 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
                   </div>
                 ))}
                 {shopImageUrls.length < 3 ? (
-                  <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-dashed border-zinc-600 bg-zinc-900/50 px-4 py-3 text-sm text-zinc-300 hover:border-[var(--accent)] hover:text-white">
-                    {uploadingIndex !== null ? "Uploading…" : "Add photo"}
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,image/gif"
-                      className="sr-only"
-                      onChange={onShopImageChange}
-                      disabled={uploadingIndex !== null}
-                    />
-                  </label>
+                  uploadingIndex !== null ? (
+                    <p className="text-sm text-[var(--muted)]">Uploading…</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-dashed border-zinc-600 bg-zinc-900/50 px-3 py-2.5 text-sm text-zinc-300 hover:border-[var(--accent)] hover:text-white">
+                        Take photo
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="sr-only"
+                          onChange={onShopImageChange}
+                          aria-label="Take a photo with the camera"
+                        />
+                      </label>
+                      <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-dashed border-zinc-600 bg-zinc-900/50 px-3 py-2.5 text-sm text-zinc-300 hover:border-[var(--accent)] hover:text-white">
+                        Gallery
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          className="sr-only"
+                          onChange={onShopImageChange}
+                          aria-label="Choose an image from your device"
+                        />
+                      </label>
+                    </div>
+                  )
                 ) : null}
               </div>
             </div>
