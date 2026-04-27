@@ -4,6 +4,11 @@ import { connectDB } from "@/lib/db";
 import { Survey, type ISurvey } from "@/models/Survey";
 import { SurveyResponse, type IRespondentInfo } from "@/models/Response";
 import { isShopMarket } from "@/lib/shopMarkets";
+import {
+  categoryNeedsGenderSegment,
+  isShopCategory,
+  isShopAudience,
+} from "@/lib/shopCategories";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -52,6 +57,51 @@ function parseRespondentInfo(raw: unknown): IRespondentInfo | NextResponse {
     );
   }
   const market = marketRaw;
+
+  const shopCategoryRaw =
+    typeof o.shopCategory === "string" ? o.shopCategory.trim() : "";
+  if (!shopCategoryRaw || !isShopCategory(shopCategoryRaw)) {
+    return NextResponse.json(
+      { error: "Please select a valid shop category." },
+      { status: 400 }
+    );
+  }
+  const shopCategory = shopCategoryRaw;
+
+  const audienceRaw = o.shopAudience;
+  const needsAudience = categoryNeedsGenderSegment(shopCategory);
+  let shopAudience: "male" | "female" | "both" | undefined;
+
+  if (needsAudience) {
+    if (
+      typeof audienceRaw !== "string" ||
+      !isShopAudience(audienceRaw.trim())
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "For Garments or Shoes, select who the shop mainly serves: male, female, or both.",
+        },
+        { status: 400 }
+      );
+    }
+    shopAudience = audienceRaw.trim() as "male" | "female" | "both";
+  } else if (audienceRaw != null && audienceRaw !== "") {
+    if (typeof audienceRaw !== "string" || !isShopAudience(audienceRaw.trim())) {
+      return NextResponse.json(
+        { error: "Invalid shopAudience value." },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json(
+      {
+        error:
+          "Customer segment (male / female / both) only applies to Garments or Shoes.",
+      },
+      { status: 400 }
+    );
+  }
+
   if (!respondentName || respondentName.length > MAX_FIELD) {
     return NextResponse.json(
       { error: "Your name is required (max 300 characters)." },
@@ -110,6 +160,8 @@ function parseRespondentInfo(raw: unknown): IRespondentInfo | NextResponse {
   return {
     shopName,
     market,
+    shopCategory,
+    ...(shopAudience != null ? { shopAudience } : {}),
     respondentName,
     whatsappContact,
     shopImageUrls,

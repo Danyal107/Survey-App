@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useId, useState } from "react";
 import type { SurveyQuestion } from "@/types/survey";
 import { SHOP_MARKETS } from "@/lib/shopMarkets";
+import {
+  SHOP_CATEGORIES,
+  categoryNeedsGenderSegment,
+} from "@/lib/shopCategories";
 
 type SurveyDoc = {
   _id: string;
@@ -22,6 +26,10 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
   const [values, setValues] = useState<Record<string, string | string[]>>({});
 
   const [shopName, setShopName] = useState("");
+  const [shopCategory, setShopCategory] = useState("");
+  const [shopAudience, setShopAudience] = useState<
+    "" | "male" | "female" | "both"
+  >("");
   const [market, setMarket] = useState("");
   const [respondentName, setRespondentName] = useState("");
   const [whatsappContact, setWhatsappContact] = useState("");
@@ -99,6 +107,12 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!survey) return;
+    if (categoryNeedsGenderSegment(shopCategory) && !shopAudience) {
+      setErr(
+        "Please select who the shop mainly serves: male, female, or both."
+      );
+      return;
+    }
     setSubmitting(true);
     setErr(null);
     const answers = survey.questions.map((q) => ({
@@ -107,7 +121,11 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
     }));
     const respondentInfo = {
       shopName: shopName.trim(),
+      shopCategory,
       market,
+      ...(categoryNeedsGenderSegment(shopCategory) && shopAudience
+        ? { shopAudience }
+        : {}),
       respondentName: respondentName.trim(),
       whatsappContact: whatsappContact.trim(),
       shopImageUrls,
@@ -226,8 +244,8 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
                 Your details
               </h2>
               <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">
-                Shop name, market, your name, WhatsApp, and up to three shop
-                photos (optional).
+                Shop name, category, market, your name, WhatsApp, and up to three
+                shop photos (optional).
               </p>
             </div>
           </div>
@@ -246,6 +264,84 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
                 placeholder="e.g. Khan General Store"
                 maxLength={300}
               />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor={`${formId}-category`} className="label-field">
+                Shop category <span className="text-red-400">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  id={`${formId}-category`}
+                  name="shopCategory"
+                  required
+                  value={shopCategory}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setShopCategory(v);
+                    if (!categoryNeedsGenderSegment(v)) setShopAudience("");
+                  }}
+                  className={`input-select ${shopCategory === "" ? "text-zinc-500" : "text-zinc-100"}`}
+                  aria-describedby={`${formId}-category-hint`}
+                >
+                  <option value="" disabled>
+                    Select category…
+                  </option>
+                  {SHOP_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p
+                id={`${formId}-category-hint`}
+                className="text-xs leading-relaxed text-[var(--muted)]"
+              >
+                What does this shop mainly sell?
+              </p>
+              {categoryNeedsGenderSegment(shopCategory) ? (
+                <div
+                  className="mt-4 space-y-3 rounded-xl border border-[var(--border)] bg-zinc-950/50 p-4"
+                  role="group"
+                  aria-labelledby={`${formId}-audience-label`}
+                >
+                  <p id={`${formId}-audience-label`} className="label-field">
+                    Who does this shop mainly serve?{" "}
+                    <span className="text-red-400">*</span>
+                  </p>
+                  <p className="text-xs text-[var(--muted)]">
+                    Tick one: male, female, or both.
+                  </p>
+                  <ul className="space-y-2">
+                    {(
+                      [
+                        { id: "male" as const, label: "Male" },
+                        { id: "female" as const, label: "Female" },
+                        { id: "both" as const, label: "Both" },
+                      ] as const
+                    ).map(({ id, label }) => (
+                      <li key={id}>
+                        <label
+                          className={`${optionBase} ${shopAudience === id ? optionActive : optionIdle}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={shopAudience === id}
+                            onChange={(e) => {
+                              if (e.target.checked) setShopAudience(id);
+                              else if (shopAudience === id) setShopAudience("");
+                            }}
+                            className="h-4 w-4 shrink-0 rounded border-zinc-600 text-[var(--accent)] focus:ring-[var(--ring)]"
+                          />
+                          <span className="text-[15px] text-zinc-200">
+                            {label}
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor={`${formId}-market`} className="label-field">

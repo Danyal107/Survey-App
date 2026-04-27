@@ -20,6 +20,10 @@ export interface RespondentInfoPayload {
   shopName: string;
   /** One of the hardcoded markets from `SHOP_MARKETS` */
   market: string;
+  /** One of the hardcoded categories from `SHOP_CATEGORIES` */
+  shopCategory: string;
+  /** Required when category is Garments or Shoes: `male` | `female` | `both` */
+  shopAudience?: "male" | "female" | "both";
   respondentName: string;
   whatsappContact: string;
   /** Max 3 HTTPS URLs from this app’s Cloudinary upload API */

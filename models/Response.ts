@@ -8,6 +8,9 @@ export interface IAnswer {
 export interface IRespondentInfo {
   shopName: string;
   market: string;
+  shopCategory: string;
+  /** Present when category is Garments or Shoes */
+  shopAudience?: "male" | "female" | "both";
   respondentName: string;
   whatsappContact: string;
   /** Up to 3 Cloudinary HTTPS URLs */
@@ -34,6 +37,12 @@ const RespondentInfoSchema = new Schema<IRespondentInfo>(
   {
     shopName: { type: String, required: true },
     market: { type: String, required: true },
+    shopCategory: { type: String, required: true },
+    shopAudience: {
+      type: String,
+      required: false,
+      enum: ["male", "female", "both"],
+    },
     respondentName: { type: String, required: true },
     whatsappContact: { type: String, required: true },
     shopImageUrls: {
