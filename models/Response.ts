@@ -5,9 +5,18 @@ export interface IAnswer {
   value: string | string[];
 }
 
+export interface IRespondentInfo {
+  shopName: string;
+  respondentName: string;
+  whatsappContact: string;
+  /** Up to 3 Cloudinary HTTPS URLs */
+  shopImageUrls: string[];
+}
+
 export interface IResponse {
   _id: mongoose.Types.ObjectId;
   surveyId: mongoose.Types.ObjectId;
+  respondentInfo?: IRespondentInfo;
   answers: IAnswer[];
   createdAt: Date;
 }
@@ -20,6 +29,23 @@ const AnswerSchema = new Schema<IAnswer>(
   { _id: false }
 );
 
+const RespondentInfoSchema = new Schema<IRespondentInfo>(
+  {
+    shopName: { type: String, required: true },
+    respondentName: { type: String, required: true },
+    whatsappContact: { type: String, required: true },
+    shopImageUrls: {
+      type: [String],
+      default: [],
+      validate: {
+        validator: (v: string[]) => Array.isArray(v) && v.length <= 3,
+        message: "At most 3 shop images",
+      },
+    },
+  },
+  { _id: false }
+);
+
 const ResponseSchema = new Schema<IResponse>(
   {
     surveyId: {
@@ -28,6 +54,7 @@ const ResponseSchema = new Schema<IResponse>(
       required: true,
       index: true,
     },
+    respondentInfo: { type: RespondentInfoSchema, required: false },
     answers: { type: [AnswerSchema], required: true },
   },
   { timestamps: { createdAt: true, updatedAt: false } }

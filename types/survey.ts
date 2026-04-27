@@ -14,3 +14,12 @@ export interface SurveyAnswer {
   /** string for single/text; string[] for multiple */
   value: string | string[];
 }
+
+/** Submitted with each response (take-survey form). */
+export interface RespondentInfoPayload {
+  shopName: string;
+  respondentName: string;
+  whatsappContact: string;
+  /** Max 3 HTTPS URLs from this app’s Cloudinary upload API */
+  shopImageUrls: string[];
+}

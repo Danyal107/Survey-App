@@ -2,9 +2,109 @@ import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
 import { Survey, type ISurvey } from "@/models/Survey";
-import { SurveyResponse } from "@/models/Response";
+import { SurveyResponse, type IRespondentInfo } from "@/models/Response";
 
 type RouteParams = { params: Promise<{ id: string }> };
+
+const MAX_FIELD = 300;
+
+function isCloudinaryHttpsUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return (
+      u.protocol === "https:" &&
+      (u.hostname === "res.cloudinary.com" ||
+        u.hostname.endsWith(".res.cloudinary.com"))
+    );
+  } catch {
+    return false;
+  }
+}
+
+function parseRespondentInfo(raw: unknown): IRespondentInfo | NextResponse {
+  if (raw == null || typeof raw !== "object") {
+    return NextResponse.json(
+      { error: "respondentInfo is required" },
+      { status: 400 }
+    );
+  }
+  const o = raw as Record<string, unknown>;
+  const shopName =
+    typeof o.shopName === "string" ? o.shopName.trim() : "";
+  const respondentName =
+    typeof o.respondentName === "string" ? o.respondentName.trim() : "";
+  const whatsappContact =
+    typeof o.whatsappContact === "string" ? o.whatsappContact.trim() : "";
+  const urlsRaw = o.shopImageUrls;
+
+  if (!shopName || shopName.length > MAX_FIELD) {
+    return NextResponse.json(
+      { error: "Shop name is required (max 300 characters)." },
+      { status: 400 }
+    );
+  }
+  if (!respondentName || respondentName.length > MAX_FIELD) {
+    return NextResponse.json(
+      { error: "Your name is required (max 300 characters)." },
+      { status: 400 }
+    );
+  }
+  if (!whatsappContact || whatsappContact.length > MAX_FIELD) {
+    return NextResponse.json(
+      { error: "WhatsApp contact is required (max 300 characters)." },
+      { status: 400 }
+    );
+  }
+  if (!/^[\d\s+()-]{6,40}$/.test(whatsappContact)) {
+    return NextResponse.json(
+      {
+        error:
+          "WhatsApp number should contain digits (and optional +, spaces, or parentheses).",
+      },
+      { status: 400 }
+    );
+  }
+
+  let shopImageUrls: string[] = [];
+  if (urlsRaw === undefined || urlsRaw === null) {
+    shopImageUrls = [];
+  } else if (!Array.isArray(urlsRaw)) {
+    return NextResponse.json(
+      { error: "shopImageUrls must be an array of URLs" },
+      { status: 400 }
+    );
+  } else {
+    if (urlsRaw.length > 3) {
+      return NextResponse.json(
+        { error: "At most 3 shop images allowed" },
+        { status: 400 }
+      );
+    }
+    for (const item of urlsRaw) {
+      if (typeof item !== "string" || !item.trim()) {
+        return NextResponse.json(
+          { error: "Each image must be a non-empty URL string" },
+          { status: 400 }
+        );
+      }
+      const u = item.trim();
+      if (!isCloudinaryHttpsUrl(u)) {
+        return NextResponse.json(
+          { error: "Shop images must be valid Cloudinary (https) URLs" },
+          { status: 400 }
+        );
+      }
+      shopImageUrls.push(u);
+    }
+  }
+
+  return {
+    shopName,
+    respondentName,
+    whatsappContact,
+    shopImageUrls,
+  };
+}
 
 export async function POST(req: Request, { params }: RouteParams) {
   const { id: surveyId } = await params;
@@ -21,6 +121,12 @@ export async function POST(req: Request, { params }: RouteParams) {
         { status: 400 }
       );
     }
+
+    const respondentParsed = parseRespondentInfo(body.respondentInfo);
+    if (respondentParsed instanceof NextResponse) {
+      return respondentParsed;
+    }
+    const respondentInfo = respondentParsed;
 
     await connectDB();
     const survey = await Survey.findById(surveyId).lean<ISurvey | null>();
@@ -100,6 +206,7 @@ export async function POST(req: Request, { params }: RouteParams) {
 
     const doc = await SurveyResponse.create({
       surveyId: surveyId,
+      respondentInfo,
       answers: normalized,
     });
 
