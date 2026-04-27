@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useId, useState } from "react";
-import type { SurveyQuestion } from "@/types/survey";
+import { useCallback, useEffect, useId, useState } from 'react';
+import type { SurveyQuestion } from '@/types/survey';
 
 type SurveyDoc = {
   _id: string;
@@ -18,13 +18,11 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
-  const [values, setValues] = useState<
-    Record<string, string | string[]>
-  >({});
+  const [values, setValues] = useState<Record<string, string | string[]>>({});
 
-  const [shopName, setShopName] = useState("");
-  const [respondentName, setRespondentName] = useState("");
-  const [whatsappContact, setWhatsappContact] = useState("");
+  const [shopName, setShopName] = useState('');
+  const [respondentName, setRespondentName] = useState('');
+  const [whatsappContact, setWhatsappContact] = useState('');
   const [shopImageUrls, setShopImageUrls] = useState<string[]>([]);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
 
@@ -34,22 +32,22 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
       const res = await fetch(`/api/surveys/${surveyId}`);
       const data = await res.json();
       if (!res.ok) {
-        setErr(data.error ?? "Not found");
+        setErr(data.error ?? 'Not found');
         return;
       }
       setSurvey({
         _id: data._id,
         title: data.title,
-        description: data.description ?? "",
+        description: data.description ?? '',
         questions: data.questions ?? [],
       });
       const init: Record<string, string | string[]> = {};
       for (const q of data.questions ?? []) {
-        init[q.id] = q.type === "multiple" ? [] : "";
+        init[q.id] = q.type === 'multiple' ? [] : '';
       }
       setValues(init);
     } catch {
-      setErr("Network error");
+      setErr('Network error');
     } finally {
       setLoading(false);
     }
@@ -62,24 +60,24 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
   async function uploadShopImage(file: File) {
     if (shopImageUrls.length >= 3) return;
     const fd = new FormData();
-    fd.append("file", file);
-    const res = await fetch("/api/upload/shop-image", {
-      method: "POST",
+    fd.append('file', file);
+    const res = await fetch('/api/upload/shop-image', {
+      method: 'POST',
       body: fd,
     });
     const data = await res.json();
     if (!res.ok) {
-      throw new Error(data.error ?? "Upload failed");
+      throw new Error(data.error ?? 'Upload failed');
     }
-    if (typeof data.url !== "string") {
-      throw new Error("Invalid upload response");
+    if (typeof data.url !== 'string') {
+      throw new Error('Invalid upload response');
     }
     setShopImageUrls((prev) => [...prev, data.url].slice(0, 3));
   }
 
   async function onShopImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    e.target.value = "";
+    e.target.value = '';
     if (!file || shopImageUrls.length >= 3) return;
     const slot = shopImageUrls.length;
     setUploadingIndex(slot);
@@ -87,7 +85,7 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
     try {
       await uploadShopImage(file);
     } catch (c) {
-      setErr(c instanceof Error ? c.message : "Upload failed");
+      setErr(c instanceof Error ? c.message : 'Upload failed');
     } finally {
       setUploadingIndex(null);
     }
@@ -114,18 +112,18 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
     };
     try {
       const res = await fetch(`/api/surveys/${surveyId}/responses`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ respondentInfo, answers }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setErr(data.error ?? "Submit failed");
+        setErr(data.error ?? 'Submit failed');
         return;
       }
       setDone(true);
     } catch {
-      setErr("Network error");
+      setErr('Network error');
     } finally {
       setSubmitting(false);
     }
@@ -139,7 +137,9 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
     return (
       <div className="mx-auto max-w-lg rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-8 text-center">
         <h1 className="text-xl font-semibold text-white">Thank you</h1>
-        <p className="mt-2 text-[var(--muted)]">Your response has been recorded.</p>
+        <p className="mt-2 text-[var(--muted)]">
+          Your response has been recorded.
+        </p>
       </div>
     );
   }
@@ -307,21 +307,21 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
                 id={headingId}
                 className="text-base font-medium leading-snug text-white"
               >
-                <span className="text-zinc-400">{i + 1}.</span>{" "}
-                {q.text || "(Untitled question)"}
+                <span className="text-zinc-400">{i + 1}.</span>{' '}
+                {q.text || '(Untitled question)'}
                 {q.required ? (
                   <span className="text-red-400" aria-hidden="true">
-                    {" "}
+                    {' '}
                     *
                   </span>
                 ) : null}
               </h2>
 
               <div className="mt-4">
-                {q.type === "text" && (
+                {q.type === 'text' && (
                   <textarea
                     required={q.required}
-                    value={(values[q.id] as string) ?? ""}
+                    value={(values[q.id] as string) ?? ''}
                     onChange={(e) =>
                       setValues((v) => ({ ...v, [q.id]: e.target.value }))
                     }
@@ -332,10 +332,14 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
                   />
                 )}
 
-                {q.type === "single" && (
-                  <ul className="space-y-1" role="radiogroup" aria-labelledby={headingId}>
-                    {q.options.map((opt) => (
-                      <li key={opt}>
+                {q.type === 'single' && (
+                  <ul
+                    className="space-y-1"
+                    role="radiogroup"
+                    aria-labelledby={headingId}
+                  >
+                    {q.options.map((opt, optIndex) => (
+                      <li key={`${q.id}-single-${optIndex}`}>
                         <label className="flex cursor-pointer items-center gap-3 rounded-lg py-2 pl-0 pr-2 hover:bg-zinc-800/60">
                           <input
                             type="radio"
@@ -355,14 +359,14 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
                   </ul>
                 )}
 
-                {q.type === "multiple" && (
+                {q.type === 'multiple' && (
                   <ul className="space-y-1" aria-labelledby={headingId}>
-                    {q.options.map((opt) => {
-                      const selected = ((values[q.id] as string[]) ?? []).includes(
-                        opt
-                      );
+                    {q.options.map((opt, optIndex) => {
+                      const selected = (
+                        (values[q.id] as string[]) ?? []
+                      ).includes(opt);
                       return (
-                        <li key={opt}>
+                        <li key={`${q.id}-multi-${optIndex}`}>
                           <label className="flex cursor-pointer items-center gap-3 rounded-lg py-2 pl-0 pr-2 hover:bg-zinc-800/60">
                             <input
                               type="checkbox"
@@ -370,7 +374,7 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
                               onChange={() => {
                                 setValues((v) => {
                                   const cur = new Set(
-                                    (v[q.id] as string[]) ?? []
+                                    (v[q.id] as string[]) ?? [],
                                   );
                                   if (cur.has(opt)) cur.delete(opt);
                                   else cur.add(opt);
@@ -404,7 +408,7 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
           disabled={submitting || uploadingIndex !== null}
           className="w-full rounded-lg bg-[var(--accent)] py-3 font-medium text-white hover:bg-[var(--accent-hover)] disabled:opacity-50"
         >
-          {submitting ? "Submitting…" : "Submit"}
+          {submitting ? 'Submitting…' : 'Submit'}
         </button>
       )}
     </form>
