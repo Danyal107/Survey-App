@@ -18,6 +18,8 @@ export interface SurveyAnswer {
 /** Submitted with each response (take-survey form). */
 export interface RespondentInfoPayload {
   shopName: string;
+  /** One of the hardcoded markets from `SHOP_MARKETS` */
+  market: string;
   respondentName: string;
   whatsappContact: string;
   /** Max 3 HTTPS URLs from this app’s Cloudinary upload API */

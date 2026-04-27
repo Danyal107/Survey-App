@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useState } from "react";
 import type { SurveyQuestion } from "@/types/survey";
+import { SHOP_MARKETS } from "@/lib/shopMarkets";
 
 type SurveyDoc = {
   _id: string;
@@ -21,6 +22,7 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
   const [values, setValues] = useState<Record<string, string | string[]>>({});
 
   const [shopName, setShopName] = useState("");
+  const [market, setMarket] = useState("");
   const [respondentName, setRespondentName] = useState("");
   const [whatsappContact, setWhatsappContact] = useState("");
   const [shopImageUrls, setShopImageUrls] = useState<string[]>([]);
@@ -105,6 +107,7 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
     }));
     const respondentInfo = {
       shopName: shopName.trim(),
+      market,
       respondentName: respondentName.trim(),
       whatsappContact: whatsappContact.trim(),
       shopImageUrls,
@@ -223,8 +226,8 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
                 Your details
               </h2>
               <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">
-                Shop name, your name, WhatsApp, and up to three shop photos
-                (optional).
+                Shop name, market, your name, WhatsApp, and up to three shop
+                photos (optional).
               </p>
             </div>
           </div>
@@ -243,6 +246,37 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
                 placeholder="e.g. Khan General Store"
                 maxLength={300}
               />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor={`${formId}-market`} className="label-field">
+                Market <span className="text-red-400">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  id={`${formId}-market`}
+                  name="market"
+                  required
+                  value={market}
+                  onChange={(e) => setMarket(e.target.value)}
+                  className={`input-select ${market === "" ? "text-zinc-500" : "text-zinc-100"}`}
+                  aria-describedby={`${formId}-market-hint`}
+                >
+                  <option value="" disabled>
+                    Select market…
+                  </option>
+                  {SHOP_MARKETS.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p
+                id={`${formId}-market-hint`}
+                className="text-xs leading-relaxed text-[var(--muted)]"
+              >
+                Flag which market this shop belongs to.
+              </p>
             </div>
             <div>
               <label htmlFor={`${formId}-person`} className="label-field">

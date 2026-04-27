@@ -7,6 +7,7 @@ export interface IAnswer {
 
 export interface IRespondentInfo {
   shopName: string;
+  market: string;
   respondentName: string;
   whatsappContact: string;
   /** Up to 3 Cloudinary HTTPS URLs */
@@ -32,6 +33,7 @@ const AnswerSchema = new Schema<IAnswer>(
 const RespondentInfoSchema = new Schema<IRespondentInfo>(
   {
     shopName: { type: String, required: true },
+    market: { type: String, required: true },
     respondentName: { type: String, required: true },
     whatsappContact: { type: String, required: true },
     shopImageUrls: {

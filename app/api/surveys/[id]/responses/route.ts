@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
 import { Survey, type ISurvey } from "@/models/Survey";
 import { SurveyResponse, type IRespondentInfo } from "@/models/Response";
+import { isShopMarket } from "@/lib/shopMarkets";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -31,6 +32,7 @@ function parseRespondentInfo(raw: unknown): IRespondentInfo | NextResponse {
   const o = raw as Record<string, unknown>;
   const shopName =
     typeof o.shopName === "string" ? o.shopName.trim() : "";
+  const marketRaw = typeof o.market === "string" ? o.market.trim() : "";
   const respondentName =
     typeof o.respondentName === "string" ? o.respondentName.trim() : "";
   const whatsappContact =
@@ -43,6 +45,13 @@ function parseRespondentInfo(raw: unknown): IRespondentInfo | NextResponse {
       { status: 400 }
     );
   }
+  if (!marketRaw || !isShopMarket(marketRaw)) {
+    return NextResponse.json(
+      { error: "Please select a valid market." },
+      { status: 400 }
+    );
+  }
+  const market = marketRaw;
   if (!respondentName || respondentName.length > MAX_FIELD) {
     return NextResponse.json(
       { error: "Your name is required (max 300 characters)." },
@@ -100,6 +109,7 @@ function parseRespondentInfo(raw: unknown): IRespondentInfo | NextResponse {
 
   return {
     shopName,
+    market,
     respondentName,
     whatsappContact,
     shopImageUrls,
