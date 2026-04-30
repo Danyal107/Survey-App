@@ -1,5 +1,13 @@
-/** Mirrors survey question shapes: text, single, multiple, plus photos. */
-export type RespondentFieldKind = "text" | "single" | "multiple" | "photo";
+/** Mirrors survey question shapes: text, single, multiple, photos, map pin. */
+export type RespondentFieldKind =
+  | "text"
+  | "single"
+  | "multiple"
+  | "photo"
+  | "location";
+
+/** Value for `kind: "location"` (WGS84). */
+export type RespondentLocationValue = { lat: number; lng: number };
 
 export interface RespondentFieldBase {
   id: string;
@@ -36,11 +44,21 @@ export interface RespondentFieldPhoto extends RespondentFieldBase {
   maxFiles?: number;
 }
 
+/** Map: click or drag pin to set shop coordinates (OpenStreetMap). */
+export interface RespondentFieldLocation extends RespondentFieldBase {
+  kind: "location";
+  defaultLat?: number;
+  defaultLng?: number;
+  /** Leaflet zoom level (e.g. 13). */
+  defaultZoom?: number;
+}
+
 export type RespondentFieldDef =
   | RespondentFieldText
   | RespondentFieldSingle
   | RespondentFieldMultiple
-  | RespondentFieldPhoto;
+  | RespondentFieldPhoto
+  | RespondentFieldLocation;
 
 export type RespondentFormDTO = {
   sectionTitle: string;
@@ -50,4 +68,7 @@ export type RespondentFormDTO = {
 };
 
 /** Values submitted under `respondentInfo` (keys = field ids). */
-export type RespondentValuesPayload = Record<string, string | string[]>;
+export type RespondentValuesPayload = Record<
+  string,
+  string | string[] | RespondentLocationValue
+>;

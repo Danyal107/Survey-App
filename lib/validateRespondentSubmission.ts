@@ -4,6 +4,8 @@ import {
   MAX_SHOP_IMAGES_PER_RESPONSE,
 } from "@/lib/shopImageUrls";
 import type { RespondentFieldDef } from "@/types/respondentForm";
+import type { IRespondentInfo } from "@/models/Response";
+import { isLocationValue } from "@/lib/shopCoordinates";
 
 const DEFAULT_MAX_TEXT = 2000;
 
@@ -17,7 +19,7 @@ function allowedOptionValues(field: RespondentFieldDef): string[] {
 export function validateRespondentSubmission(
   raw: unknown,
   fields: RespondentFieldDef[]
-): Record<string, string | string[]> | NextResponse {
+): IRespondentInfo | NextResponse {
   if (raw == null || typeof raw !== "object") {
     return NextResponse.json(
       { error: "respondentInfo is required" },
@@ -25,10 +27,34 @@ export function validateRespondentSubmission(
     );
   }
   const o = raw as Record<string, unknown>;
-  const out: Record<string, string | string[]> = {};
+  const out: IRespondentInfo = {};
 
   for (const field of fields) {
     const rawVal = o[field.id];
+
+    if (field.kind === "location") {
+      if (field.required) {
+        if (!isLocationValue(rawVal)) {
+          return NextResponse.json(
+            { error: `“${field.label}” requires a map location.` },
+            { status: 400 }
+          );
+        }
+        out[field.id] = rawVal;
+      } else {
+        if (rawVal === undefined || rawVal === null) {
+          continue;
+        }
+        if (!isLocationValue(rawVal)) {
+          return NextResponse.json(
+            { error: `Invalid map location for “${field.label}”.` },
+            { status: 400 }
+          );
+        }
+        out[field.id] = rawVal;
+      }
+      continue;
+    }
 
     if (field.kind === "photo") {
       const maxF = field.maxFiles ?? MAX_SHOP_IMAGES_PER_RESPONSE;

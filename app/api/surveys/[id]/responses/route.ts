@@ -11,6 +11,7 @@ import {
   DEFAULT_SHOP_FIELD_IDS,
   splitRespondentForShop,
 } from "@/lib/respondentShopSplit";
+import { normalizeShopDetailsAndCoords } from "@/lib/shopCoordinates";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -148,19 +149,27 @@ export async function POST(req: Request, { params }: RouteParams) {
           ...notDeleted,
         });
         if (shopDoc) {
+          const normalized = normalizeShopDetailsAndCoords(shopPayload);
           const prev =
             shopDoc.details &&
             typeof shopDoc.details === "object" &&
             !Array.isArray(shopDoc.details)
               ? (shopDoc.details as IRespondentInfo)
               : {};
-          shopDoc.details = { ...prev, ...shopPayload };
+          shopDoc.details = { ...prev, ...normalized.details };
+          if (normalized.coordinates) {
+            shopDoc.coordinates = normalized.coordinates;
+          }
           await shopDoc.save();
         }
       }
     } else if (Object.keys(shopPayload).length > 0) {
+      const normalized = normalizeShopDetailsAndCoords(shopPayload);
       const shopDoc = await Shop.create({
-        details: shopPayload,
+        details: normalized.details,
+        ...(normalized.coordinates
+          ? { coordinates: normalized.coordinates }
+          : {}),
       });
       resolvedShopId = shopDoc._id as mongoose.Types.ObjectId;
     }
@@ -198,7 +207,10 @@ export async function GET(_req: Request, { params }: RouteParams) {
       surveyId,
       ...notDeleted,
     })
-      .populate({ path: "shopId", select: "details createdAt isDeleted" })
+      .populate({
+        path: "shopId",
+        select: "details createdAt isDeleted coordinates",
+      })
       .sort({ createdAt: -1 })
       .lean();
 
@@ -211,6 +223,7 @@ export async function GET(_req: Request, { params }: RouteParams) {
               details: unknown;
               createdAt?: Date;
               isDeleted?: boolean;
+              coordinates?: number[];
             }
           | null
           | undefined;
@@ -228,13 +241,19 @@ export async function GET(_req: Request, { params }: RouteParams) {
             details: unknown;
             createdAt?: Date;
             isDeleted?: boolean;
+            coordinates?: number[];
           };
           base.shopId = String(s._id);
+          const coord =
+            Array.isArray(s.coordinates) && s.coordinates.length === 2
+              ? ([s.coordinates[0], s.coordinates[1]] as [number, number])
+              : null;
           base.shop = {
             _id: String(s._id),
             details: s.details,
             createdAt: s.createdAt,
             isDeleted: Boolean(s.isDeleted),
+            coordinates: coord,
           };
         } else if (shopRef) {
           base.shopId = String(shopRef);

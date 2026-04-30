@@ -3,7 +3,11 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { MAX_SHOP_IMAGES_PER_RESPONSE } from "@/lib/shopImageUrls";
-import type { RespondentFieldDef } from "@/types/respondentForm";
+import type {
+  RespondentFieldDef,
+  RespondentLocationValue,
+} from "@/types/respondentForm";
+import { RespondentLocationField } from "@/components/RespondentLocationField";
 
 type ShopImageSlot =
   | { status: "uploading"; id: string }
@@ -14,8 +18,14 @@ type Props = {
   title: string;
   description: string;
   fields: RespondentFieldDef[];
-  values: Record<string, string | string[]>;
-  onFieldChange: (id: string, value: string | string[]) => void;
+  values: Record<
+    string,
+    string | string[] | RespondentLocationValue | undefined
+  >;
+  onFieldChange: (
+    id: string,
+    value: string | string[] | RespondentLocationValue | undefined
+  ) => void;
   onImageUploadingChange: (inFlight: boolean) => void;
   onClientError: (message: string) => void;
 };
@@ -375,6 +385,38 @@ export function RespondentFormSection({
                     );
                   })}
                 </ul>
+              </div>
+            );
+          }
+
+          if (field.kind === "location") {
+            const v = values[field.id] as RespondentLocationValue | undefined;
+            const mapId = `${baseId}-${field.id}-map`;
+            return (
+              <div key={field.id}>
+                <p className="label-field">
+                  {field.label}{" "}
+                  {field.required ? (
+                    <span className="text-red-400">*</span>
+                  ) : (
+                    <span className="font-normal text-zinc-500">
+                      (optional)
+                    </span>
+                  )}
+                </p>
+                {field.description ? (
+                  <p className="mt-1 text-xs text-[var(--muted)]">
+                    {field.description}
+                  </p>
+                ) : null}
+                <div className="mt-2">
+                  <RespondentLocationField
+                    field={field}
+                    value={v}
+                    onChange={(next) => onFieldChange(field.id, next)}
+                    mapContainerId={mapId}
+                  />
+                </div>
               </div>
             );
           }

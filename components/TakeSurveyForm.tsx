@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useId, useState } from "react";
 import type { SurveyQuestion } from "@/types/survey";
-import type { RespondentFormDTO } from "@/types/respondentForm";
+import type {
+  RespondentFormDTO,
+  RespondentLocationValue,
+} from "@/types/respondentForm";
+import { isLocationValue } from "@/lib/shopCoordinates";
 import { MAX_SHOP_IMAGES_PER_RESPONSE } from "@/lib/shopImageUrls";
 import { RespondentFormSection } from "@/components/RespondentFormSection";
 
@@ -25,12 +29,18 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
   const [respondentForm, setRespondentForm] =
     useState<RespondentFormDTO | null>(null);
   const [respondentValues, setRespondentValues] = useState<
-    Record<string, string | string[]>
+    Record<
+      string,
+      string | string[] | RespondentLocationValue | undefined
+    >
   >({});
   const [respondentUploading, setRespondentUploading] = useState(false);
 
   const onRespondentFieldChange = useCallback(
-    (id: string, value: string | string[]) => {
+    (
+      id: string,
+      value: string | string[] | RespondentLocationValue | undefined
+    ) => {
       setErr(null);
       setRespondentValues((prev) => ({ ...prev, [id]: value }));
     },
@@ -76,10 +86,15 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
       }
       setValues(init);
 
-      const rInit: Record<string, string | string[]> = {};
+      const rInit: Record<
+        string,
+        string | string[] | RespondentLocationValue | undefined
+      > = {};
       for (const f of form.fields) {
         if (f.kind === "photo" || f.kind === "multiple") rInit[f.id] = [];
-        else rInit[f.id] = "";
+        else if (f.kind === "location") {
+          /* pin set on map */
+        } else rInit[f.id] = "";
       }
       setRespondentValues(rInit);
     } catch {
@@ -122,6 +137,12 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
         const s = (respondentValues[f.id] as string) ?? "";
         if (!s.trim()) {
           return `“${f.label}” is required.`;
+        }
+      }
+      if (f.kind === "location" && f.required) {
+        const loc = respondentValues[f.id];
+        if (!isLocationValue(loc)) {
+          return `Please set a map pin for “${f.label}”.`;
         }
       }
     }

@@ -10,6 +10,7 @@ export const DEFAULT_SHOP_FIELD_IDS: readonly string[] = [
   "shopCategory",
   "shopAudience",
   "market",
+  "shopLocation",
   "shopImageUrls",
 ];
 

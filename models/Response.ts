@@ -6,7 +6,10 @@ export interface IAnswer {
 }
 
 /** Keys match `RespondentFormConfig` field ids (dynamic respondent section). */
-export type IRespondentInfo = Record<string, string | string[]>;
+export type IRespondentInfo = Record<
+  string,
+  string | string[] | { lat: number; lng: number }
+>;
 
 export interface IResponse {
   _id: mongoose.Types.ObjectId;

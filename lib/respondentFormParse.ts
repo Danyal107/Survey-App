@@ -4,7 +4,13 @@ import type {
 } from "@/types/respondentForm";
 import { migrateRespondentFieldRow } from "@/lib/respondentFormLegacy";
 
-const KINDS: RespondentFieldKind[] = ["text", "single", "multiple", "photo"];
+const KINDS: RespondentFieldKind[] = [
+  "text",
+  "single",
+  "multiple",
+  "photo",
+  "location",
+];
 
 function isKind(s: string): s is RespondentFieldKind {
   return (KINDS as string[]).includes(s);
@@ -68,7 +74,9 @@ export function parseRespondentFieldList(raw: unknown): RespondentFieldDef[] {
 
     const kindRaw = o.kind;
     if (typeof kindRaw !== "string" || !isKind(kindRaw)) {
-      throw new Error(`Field "${id}": invalid kind (use text, single, multiple, or photo)`);
+      throw new Error(
+        `Field "${id}": invalid kind (use text, single, multiple, photo, or location)`
+      );
     }
     const label = typeof o.label === "string" ? o.label.trim() : "";
     if (!label) {
@@ -141,6 +149,37 @@ export function parseRespondentFieldList(raw: unknown): RespondentFieldDef[] {
         placeholder,
         required,
         maxFiles,
+      });
+      continue;
+    }
+
+    if (kindRaw === "location") {
+      const defaultLat =
+        typeof o.defaultLat === "number" && o.defaultLat >= -90 && o.defaultLat <= 90
+          ? o.defaultLat
+          : 31.5204;
+      const defaultLng =
+        typeof o.defaultLng === "number" &&
+        o.defaultLng >= -180 &&
+        o.defaultLng <= 180
+          ? o.defaultLng
+          : 74.3587;
+      const defaultZoom =
+        typeof o.defaultZoom === "number" &&
+        o.defaultZoom >= 1 &&
+        o.defaultZoom <= 18
+          ? o.defaultZoom
+          : 13;
+      out.push({
+        id,
+        kind: "location",
+        label,
+        description,
+        placeholder,
+        required,
+        defaultLat,
+        defaultLng,
+        defaultZoom,
       });
       continue;
     }

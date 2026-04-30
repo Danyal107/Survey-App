@@ -1,4 +1,5 @@
-import type { RespondentFieldDef } from '@/types/respondentForm';
+import type { RespondentFieldDef } from "@/types/respondentForm";
+import { SHOP_LOCATION_FIELD_ID } from "@/lib/shopCoordinates";
 import {
   LEGACY_CATEGORY_OPTIONS,
   LEGACY_MARKET_OPTIONS,
@@ -43,6 +44,16 @@ export const DEFAULT_RESPONDENT_FIELDS: RespondentFieldDef[] = [
     required: true,
     options: LEGACY_MARKET_OPTIONS,
     description: 'Which market is this shop in?',
+  },
+  {
+    id: SHOP_LOCATION_FIELD_ID,
+    kind: 'location',
+    label: 'Shop location on map',
+    required: false,
+    description: 'Drop a pin at the shop entrance or exact spot (optional).',
+    defaultLat: 31.5204,
+    defaultLng: 74.3587,
+    defaultZoom: 13,
   },
   {
     id: 'respondentName',
