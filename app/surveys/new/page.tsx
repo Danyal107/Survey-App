@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { AdminGate } from "@/components/AdminGate";
+import { reloadIfAdminSessionExpired } from "@/lib/adminSessionClient";
 import { toast } from "@/lib/toast";
 
 export default function NewSurveyPage() {
@@ -23,6 +25,7 @@ export default function NewSurveyPage() {
       });
       const data = await res.json();
       if (!res.ok) {
+        reloadIfAdminSessionExpired(res, data);
         const msg = data.error ?? "Failed to create";
         toast.error(msg);
         setErr(msg);
@@ -38,6 +41,7 @@ export default function NewSurveyPage() {
   }
 
   return (
+    <AdminGate>
     <div className="mx-auto max-w-lg space-y-8">
       <header className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-hover)]">
@@ -98,5 +102,6 @@ export default function NewSurveyPage() {
         </button>
       </form>
     </div>
+    </AdminGate>
   );
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/db";
 import { notDeleted } from "@/lib/notDeleted";
 import { Survey } from "@/models/Survey";
@@ -25,6 +26,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const denied = requireAdmin(req);
+  if (denied) return denied;
+
   try {
     const body = await req.json();
     const title = typeof body.title === "string" ? body.title.trim() : "";

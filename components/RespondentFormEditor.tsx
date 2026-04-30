@@ -7,6 +7,7 @@ import type {
   RespondentFieldKind,
   RespondentFormDTO,
 } from '@/types/respondentForm';
+import { reloadIfAdminSessionExpired } from '@/lib/adminSessionClient';
 import { formatDateTimeMedium } from '@/lib/formatDate';
 import { toast } from '@/lib/toast';
 
@@ -231,6 +232,7 @@ export function RespondentFormEditor() {
       });
       const data = await res.json();
       if (!res.ok) {
+        reloadIfAdminSessionExpired(res, data);
         const msg = data.error ?? 'Save failed';
         toast.error(msg);
         setErr(msg);

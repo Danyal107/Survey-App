@@ -1,5 +1,10 @@
+import { AdminGate } from "@/components/AdminGate";
 import { RespondentFormEditor } from "@/components/RespondentFormEditor";
 
 export default function RespondentFormSettingsPage() {
-  return <RespondentFormEditor />;
+  return (
+    <AdminGate>
+      <RespondentFormEditor />
+    </AdminGate>
+  );
 }

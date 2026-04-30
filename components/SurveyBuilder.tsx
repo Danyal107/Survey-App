@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { QuestionType, SurveyQuestion } from '@/types/survey';
+import { reloadIfAdminSessionExpired } from '@/lib/adminSessionClient';
 import { toast } from '@/lib/toast';
 
 type SurveyDoc = {
@@ -88,6 +89,7 @@ export function SurveyBuilder({ surveyId }: { surveyId: string }) {
       });
       const data = await res.json();
       if (!res.ok) {
+        reloadIfAdminSessionExpired(res, data);
         const msg = data.error ?? 'Save failed';
         toast.error(msg);
         setErr(msg);
@@ -117,6 +119,7 @@ export function SurveyBuilder({ surveyId }: { surveyId: string }) {
       const res = await fetch(`/api/surveys/${surveyId}`, { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json();
+        reloadIfAdminSessionExpired(res, data);
         const msg = data.error ?? 'Delete failed';
         toast.error(msg);
         setErr(msg);
