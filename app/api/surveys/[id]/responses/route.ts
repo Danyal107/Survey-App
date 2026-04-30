@@ -8,10 +8,8 @@ import { SurveyResponse, type IRespondentInfo } from "@/models/Response";
 import { getOrCreateRespondentFormConfig } from "@/lib/respondentFormStore";
 import { validateRespondentSubmission } from "@/lib/validateRespondentSubmission";
 import { splitRespondentForShop } from "@/lib/respondentShopSplit";
-import {
-  normalizeShopDetailsAndCoords,
-  shopExistsAtCoordinates,
-} from "@/lib/shopCoordinates";
+import { normalizeShopDetailsAndCoords } from "@/lib/shopCoordinates";
+import { shopExistsAtCoordinates } from "@/lib/shopExistsAtCoordinates";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
