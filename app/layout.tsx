@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
+import { MainNav } from "@/components/MainNav";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -45,29 +46,7 @@ export default function RootLayout({
                 Survey Studio
               </span>
             </Link>
-            <nav
-              className="flex items-center gap-1 sm:gap-2"
-              aria-label="Main"
-            >
-              <Link
-                href="/"
-                className="rounded-lg px-3 py-2 text-sm font-medium text-[var(--muted)] transition-colors hover:bg-zinc-800/60 hover:text-white"
-              >
-                Surveys
-              </Link>
-              <Link
-                href="/settings/respondent-form"
-                className="rounded-lg px-3 py-2 text-sm font-medium text-[var(--muted)] transition-colors hover:bg-zinc-800/60 hover:text-white"
-              >
-                Respondent form
-              </Link>
-              <Link
-                href="/surveys/new"
-                className="rounded-lg bg-[var(--accent-muted)] px-3.5 py-2 text-sm font-semibold text-[var(--accent-hover)] ring-1 ring-indigo-500/20 transition-colors hover:bg-indigo-500/20 hover:text-indigo-100"
-              >
-                New survey
-              </Link>
-            </nav>
+            <MainNav />
           </div>
         </header>
         <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-12">
