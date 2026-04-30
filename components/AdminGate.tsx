@@ -110,8 +110,9 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
               Admin password required
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
-              Creating surveys, editing surveys, deleting surveys, and changing
-              the respondent form all require the password set in{" "}
+              Creating surveys, editing surveys, deleting surveys, managing
+              shops, and changing the respondent form all require the password
+              set in{" "}
               <code className="rounded bg-zinc-800 px-1">ADMIN_PASSWORD</code>{" "}
               on the server. Taking a survey and viewing results stay open.
             </p>

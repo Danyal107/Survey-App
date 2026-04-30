@@ -18,6 +18,7 @@ export function MainNav() {
   const isSurveys =
     pathname === "/" ||
     (pathname.startsWith("/surveys") && pathname !== "/surveys/new");
+  const isShops = pathname.startsWith("/shops");
   const isRespondentForm = pathname.startsWith("/settings/respondent-form");
   const isNewSurvey = pathname === "/surveys/new";
 
@@ -32,6 +33,13 @@ export function MainNav() {
         aria-current={isSurveys ? "page" : undefined}
       >
         Surveys
+      </Link>
+      <Link
+        href="/shops"
+        className={navItemClass(isShops)}
+        aria-current={isShops ? "page" : undefined}
+      >
+        Shops
       </Link>
       <Link
         href="/settings/respondent-form"
