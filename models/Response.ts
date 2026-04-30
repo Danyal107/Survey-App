@@ -9,7 +9,7 @@ export interface IRespondentInfo {
   shopName: string;
   market: string;
   shopCategory: string;
-  /** Present when category is Garments or Shoes */
+  /** Present when the shop category requires audience (see ShopOptions) */
   shopAudience?: "male" | "female" | "both";
   respondentName: string;
   whatsappContact: string;

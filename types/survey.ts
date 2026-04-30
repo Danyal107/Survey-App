@@ -18,11 +18,11 @@ export interface SurveyAnswer {
 /** Submitted with each response (take-survey form). */
 export interface RespondentInfoPayload {
   shopName: string;
-  /** One of the hardcoded markets from `SHOP_MARKETS` */
+  /** Must match a market from `/api/shop-options` */
   market: string;
-  /** One of the hardcoded categories from `SHOP_CATEGORIES` */
+  /** Must match a category label from `/api/shop-options` */
   shopCategory: string;
-  /** Required when category is Garments or Shoes: `male` | `female` | `both` */
+  /** Required when the category has `requiresAudience` in shop options */
   shopAudience?: "male" | "female" | "both";
   respondentName: string;
   whatsappContact: string;

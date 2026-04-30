@@ -1,23 +1,18 @@
-/** Hardcoded shop categories for respondent “Your details” (keep in sync with UI + API). */
-export const SHOP_CATEGORIES = [
-  'Garments',
-  'Cosmetics',
-  'Shoes',
-  'Jewellery',
-  'Electronics',
-  'General / mixed',
-  'Other',
-] as const;
+import type { IShopCategoryOption } from "@/models/ShopOptions";
 
-export type ShopCategory = (typeof SHOP_CATEGORIES)[number];
-
-export function isShopCategory(value: string): value is ShopCategory {
-  return (SHOP_CATEGORIES as readonly string[]).includes(value);
+export function categoryNeedsGenderSegment(
+  categoryLabel: string,
+  categories: IShopCategoryOption[]
+): boolean {
+  const row = categories.find((c) => c.label === categoryLabel);
+  return row?.requiresAudience ?? false;
 }
 
-/** Garments & shoes need a male / female / both segment on the form. */
-export function categoryNeedsGenderSegment(category: string): boolean {
-  return category === "Garments" || category === "Shoes";
+export function isShopCategory(
+  value: string,
+  categories: IShopCategoryOption[]
+): boolean {
+  return categories.some((c) => c.label === value);
 }
 
 export const SHOP_AUDIENCE_VALUES = ["male", "female", "both"] as const;

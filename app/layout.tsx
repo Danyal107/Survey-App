@@ -56,6 +56,12 @@ export default function RootLayout({
                 Surveys
               </Link>
               <Link
+                href="/settings/shop-options"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-[var(--muted)] transition-colors hover:bg-zinc-800/60 hover:text-white"
+              >
+                Shop options
+              </Link>
+              <Link
                 href="/surveys/new"
                 className="rounded-lg bg-[var(--accent-muted)] px-3.5 py-2 text-sm font-semibold text-[var(--accent-hover)] ring-1 ring-indigo-500/20 transition-colors hover:bg-indigo-500/20 hover:text-indigo-100"
               >

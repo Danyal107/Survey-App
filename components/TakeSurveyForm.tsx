@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useId, useState } from "react";
 import type { SurveyQuestion } from "@/types/survey";
-import { SHOP_MARKETS } from "@/lib/shopMarkets";
-import {
-  SHOP_CATEGORIES,
-  categoryNeedsGenderSegment,
-} from "@/lib/shopCategories";
+import { categoryNeedsGenderSegment } from "@/lib/shopCategories";
+
+type ShopOptionsPayload = {
+  markets: string[];
+  categories: { label: string; requiresAudience: boolean }[];
+};
 
 type SurveyDoc = {
   _id: string;
@@ -24,6 +25,9 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
   const [done, setDone] = useState(false);
 
   const [values, setValues] = useState<Record<string, string | string[]>>({});
+  const [shopOptions, setShopOptions] = useState<ShopOptionsPayload | null>(
+    null
+  );
 
   const [shopName, setShopName] = useState("");
   const [shopCategory, setShopCategory] = useState("");
@@ -39,20 +43,42 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
   const load = useCallback(async () => {
     setErr(null);
     try {
-      const res = await fetch(`/api/surveys/${surveyId}`);
-      const data = await res.json();
-      if (!res.ok) {
-        setErr(data.error ?? "Not found");
+      const [surveyRes, optionsRes] = await Promise.all([
+        fetch(`/api/surveys/${surveyId}`),
+        fetch("/api/shop-options"),
+      ]);
+      const surveyData = await surveyRes.json();
+      const optionsData = await optionsRes.json();
+
+      if (!surveyRes.ok) {
+        setErr(surveyData.error ?? "Not found");
         return;
       }
+      if (!optionsRes.ok) {
+        setErr(optionsData.error ?? "Failed to load shop options");
+        return;
+      }
+
+      const opts = optionsData as ShopOptionsPayload;
+      if (
+        !Array.isArray(opts.markets) ||
+        !Array.isArray(opts.categories) ||
+        opts.markets.length === 0 ||
+        opts.categories.length === 0
+      ) {
+        setErr("Shop markets and categories are not configured yet.");
+        return;
+      }
+
+      setShopOptions(opts);
       setSurvey({
-        _id: data._id,
-        title: data.title,
-        description: data.description ?? "",
-        questions: data.questions ?? [],
+        _id: surveyData._id,
+        title: surveyData.title,
+        description: surveyData.description ?? "",
+        questions: surveyData.questions ?? [],
       });
       const init: Record<string, string | string[]> = {};
-      for (const q of data.questions ?? []) {
+      for (const q of surveyData.questions ?? []) {
         init[q.id] = q.type === "multiple" ? [] : "";
       }
       setValues(init);
@@ -107,7 +133,11 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!survey) return;
-    if (categoryNeedsGenderSegment(shopCategory) && !shopAudience) {
+    if (
+      shopOptions &&
+      categoryNeedsGenderSegment(shopCategory, shopOptions.categories) &&
+      !shopAudience
+    ) {
       setErr(
         "Please select who the shop mainly serves: male, female, or both."
       );
@@ -123,7 +153,9 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
       shopName: shopName.trim(),
       shopCategory,
       market,
-      ...(categoryNeedsGenderSegment(shopCategory) && shopAudience
+      ...(shopOptions &&
+      categoryNeedsGenderSegment(shopCategory, shopOptions.categories) &&
+      shopAudience
         ? { shopAudience }
         : {}),
       respondentName: respondentName.trim(),
@@ -166,7 +198,7 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
       </div>
     );
   }
-  if (!survey) return null;
+  if (!survey || !shopOptions) return null;
 
   if (done) {
     return (
@@ -278,7 +310,8 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
                   onChange={(e) => {
                     const v = e.target.value;
                     setShopCategory(v);
-                    if (!categoryNeedsGenderSegment(v)) setShopAudience("");
+                    if (!categoryNeedsGenderSegment(v, shopOptions.categories))
+                      setShopAudience("");
                   }}
                   className={`input-select ${shopCategory === "" ? "text-zinc-500" : "text-zinc-100"}`}
                   aria-describedby={`${formId}-category-hint`}
@@ -286,9 +319,9 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
                   <option value="" disabled>
                     Select category…
                   </option>
-                  {SHOP_CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
+                  {shopOptions.categories.map((c) => (
+                    <option key={c.label} value={c.label}>
+                      {c.label}
                     </option>
                   ))}
                 </select>
@@ -299,7 +332,10 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
               >
                 What does this shop mainly sell?
               </p>
-              {categoryNeedsGenderSegment(shopCategory) ? (
+              {categoryNeedsGenderSegment(
+                shopCategory,
+                shopOptions.categories
+              ) ? (
                 <div
                   className="mt-4 space-y-3 rounded-xl border border-[var(--border)] bg-zinc-950/50 p-4"
                   role="group"
@@ -360,7 +396,7 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
                   <option value="" disabled>
                     Select market…
                   </option>
-                  {SHOP_MARKETS.map((m) => (
+                  {shopOptions.markets.map((m) => (
                     <option key={m} value={m}>
                       {m}
                     </option>

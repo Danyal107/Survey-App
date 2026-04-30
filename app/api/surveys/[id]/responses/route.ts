@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
 import { Survey, type ISurvey } from "@/models/Survey";
 import { SurveyResponse, type IRespondentInfo } from "@/models/Response";
+import { getOrCreateShopOptions } from "@/lib/shopOptionsStore";
+import type { IShopCategoryOption } from "@/models/ShopOptions";
 import { isShopMarket } from "@/lib/shopMarkets";
 import {
   categoryNeedsGenderSegment,
@@ -27,7 +29,10 @@ function isCloudinaryHttpsUrl(url: string): boolean {
   }
 }
 
-function parseRespondentInfo(raw: unknown): IRespondentInfo | NextResponse {
+function parseRespondentInfo(
+  raw: unknown,
+  shop: { markets: string[]; categories: IShopCategoryOption[] }
+): IRespondentInfo | NextResponse {
   if (raw == null || typeof raw !== "object") {
     return NextResponse.json(
       { error: "respondentInfo is required" },
@@ -50,7 +55,7 @@ function parseRespondentInfo(raw: unknown): IRespondentInfo | NextResponse {
       { status: 400 }
     );
   }
-  if (!marketRaw || !isShopMarket(marketRaw)) {
+  if (!marketRaw || !isShopMarket(marketRaw, shop.markets)) {
     return NextResponse.json(
       { error: "Please select a valid market." },
       { status: 400 }
@@ -60,7 +65,7 @@ function parseRespondentInfo(raw: unknown): IRespondentInfo | NextResponse {
 
   const shopCategoryRaw =
     typeof o.shopCategory === "string" ? o.shopCategory.trim() : "";
-  if (!shopCategoryRaw || !isShopCategory(shopCategoryRaw)) {
+  if (!shopCategoryRaw || !isShopCategory(shopCategoryRaw, shop.categories)) {
     return NextResponse.json(
       { error: "Please select a valid shop category." },
       { status: 400 }
@@ -69,7 +74,10 @@ function parseRespondentInfo(raw: unknown): IRespondentInfo | NextResponse {
   const shopCategory = shopCategoryRaw;
 
   const audienceRaw = o.shopAudience;
-  const needsAudience = categoryNeedsGenderSegment(shopCategory);
+  const needsAudience = categoryNeedsGenderSegment(
+    shopCategory,
+    shop.categories
+  );
   let shopAudience: "male" | "female" | "both" | undefined;
 
   if (needsAudience) {
@@ -80,7 +88,7 @@ function parseRespondentInfo(raw: unknown): IRespondentInfo | NextResponse {
       return NextResponse.json(
         {
           error:
-            "For Garments or Shoes, select who the shop mainly serves: male, female, or both.",
+            "For this category, select who the shop mainly serves: male, female, or both.",
         },
         { status: 400 }
       );
@@ -96,7 +104,7 @@ function parseRespondentInfo(raw: unknown): IRespondentInfo | NextResponse {
     return NextResponse.json(
       {
         error:
-          "Customer segment (male / female / both) only applies to Garments or Shoes.",
+          "Customer segment (male / female / both) only applies to categories that require it.",
       },
       { status: 400 }
     );
@@ -184,13 +192,19 @@ export async function POST(req: Request, { params }: RouteParams) {
       );
     }
 
-    const respondentParsed = parseRespondentInfo(body.respondentInfo);
+    await connectDB();
+    const shopOptsDoc = await getOrCreateShopOptions();
+    const shopOpts = {
+      markets: shopOptsDoc.markets,
+      categories: shopOptsDoc.categories,
+    };
+
+    const respondentParsed = parseRespondentInfo(body.respondentInfo, shopOpts);
     if (respondentParsed instanceof NextResponse) {
       return respondentParsed;
     }
     const respondentInfo = respondentParsed;
 
-    await connectDB();
     const survey = await Survey.findById(surveyId).lean<ISurvey | null>();
     if (!survey) {
       return NextResponse.json({ error: "Survey not found" }, { status: 404 });
