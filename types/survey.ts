@@ -15,17 +15,5 @@ export interface SurveyAnswer {
   value: string | string[];
 }
 
-/** Submitted with each response (take-survey form). */
-export interface RespondentInfoPayload {
-  shopName: string;
-  /** Must match a market from `/api/shop-options` */
-  market: string;
-  /** Must match a category label from `/api/shop-options` */
-  shopCategory: string;
-  /** Required when the category has `requiresAudience` in shop options */
-  shopAudience?: "male" | "female" | "both";
-  respondentName: string;
-  whatsappContact: string;
-  /** HTTPS URLs from this app’s shop image uploader (see `MAX_SHOP_IMAGES_PER_RESPONSE`). */
-  shopImageUrls: string[];
-}
+/** Submitted with each response (take-survey form). Keys match `/api/respondent-form` field ids. */
+export type RespondentInfoPayload = Record<string, string | string[]>;

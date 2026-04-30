@@ -56,10 +56,10 @@ export default function RootLayout({
                 Surveys
               </Link>
               <Link
-                href="/settings/shop-options"
+                href="/settings/respondent-form"
                 className="rounded-lg px-3 py-2 text-sm font-medium text-[var(--muted)] transition-colors hover:bg-zinc-800/60 hover:text-white"
               >
-                Shop options
+                Respondent form
               </Link>
               <Link
                 href="/surveys/new"

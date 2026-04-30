@@ -1,22 +1,10 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { flushSync } from "react-dom";
+import { useCallback, useEffect, useId, useState } from "react";
 import type { SurveyQuestion } from "@/types/survey";
-import { categoryNeedsGenderSegment } from "@/lib/shopCategories";
+import type { RespondentFormDTO } from "@/types/respondentForm";
 import { MAX_SHOP_IMAGES_PER_RESPONSE } from "@/lib/shopImageUrls";
-
-type ShopOptionsPayload = {
-  markets: string[];
-  categories: { label: string; requiresAudience: boolean }[];
-};
+import { RespondentFormSection } from "@/components/RespondentFormSection";
 
 type SurveyDoc = {
   _id: string;
@@ -24,10 +12,6 @@ type SurveyDoc = {
   description: string;
   questions: SurveyQuestion[];
 };
-
-type ShopImageSlot =
-  | { status: "uploading"; id: string }
-  | { status: "done"; url: string };
 
 export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
   const formId = useId();
@@ -38,60 +22,48 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
   const [done, setDone] = useState(false);
 
   const [values, setValues] = useState<Record<string, string | string[]>>({});
-  const [shopOptions, setShopOptions] = useState<ShopOptionsPayload | null>(
-    null
-  );
+  const [respondentForm, setRespondentForm] =
+    useState<RespondentFormDTO | null>(null);
+  const [respondentValues, setRespondentValues] = useState<
+    Record<string, string | string[]>
+  >({});
+  const [respondentUploading, setRespondentUploading] = useState(false);
 
-  const [shopName, setShopName] = useState("");
-  const [shopCategory, setShopCategory] = useState("");
-  const [shopAudience, setShopAudience] = useState<
-    "" | "male" | "female" | "both"
-  >("");
-  const [market, setMarket] = useState("");
-  const [respondentName, setRespondentName] = useState("");
-  const [whatsappContact, setWhatsappContact] = useState("");
-  const [shopImageSlots, setShopImageSlots] = useState<ShopImageSlot[]>([]);
-  const uploadAbortBySlotId = useRef(new Map<string, AbortController>());
-  const shopImageUrls = useMemo(
-    () =>
-      shopImageSlots
-        .filter((s): s is { status: "done"; url: string } => s.status === "done")
-        .map((s) => s.url),
-    [shopImageSlots]
+  const onRespondentFieldChange = useCallback(
+    (id: string, value: string | string[]) => {
+      setErr(null);
+      setRespondentValues((prev) => ({ ...prev, [id]: value }));
+    },
+    []
   );
-  const hasUploadInFlight = shopImageSlots.some((s) => s.status === "uploading");
 
   const load = useCallback(async () => {
     setErr(null);
     try {
-      const [surveyRes, optionsRes] = await Promise.all([
+      const [surveyRes, formRes] = await Promise.all([
         fetch(`/api/surveys/${surveyId}`),
-        fetch("/api/shop-options"),
+        fetch("/api/respondent-form"),
       ]);
       const surveyData = await surveyRes.json();
-      const optionsData = await optionsRes.json();
+      const formData = await formRes.json();
 
       if (!surveyRes.ok) {
         setErr(surveyData.error ?? "Not found");
         return;
       }
-      if (!optionsRes.ok) {
-        setErr(optionsData.error ?? "Failed to load shop options");
+      if (!formRes.ok) {
+        setErr(formData.error ?? "Failed to load respondent form");
         return;
       }
 
-      const opts = optionsData as ShopOptionsPayload;
-      if (
-        !Array.isArray(opts.markets) ||
-        !Array.isArray(opts.categories) ||
-        opts.markets.length === 0 ||
-        opts.categories.length === 0
-      ) {
-        setErr("Shop markets and categories are not configured yet.");
+      const form = formData as RespondentFormDTO;
+
+      if (!Array.isArray(form.fields) || form.fields.length === 0) {
+        setErr("Respondent form has no fields configured.");
         return;
       }
 
-      setShopOptions(opts);
+      setRespondentForm(form);
       setSurvey({
         _id: surveyData._id,
         title: surveyData.title,
@@ -103,6 +75,13 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
         init[q.id] = q.type === "multiple" ? [] : "";
       }
       setValues(init);
+
+      const rInit: Record<string, string | string[]> = {};
+      for (const f of form.fields) {
+        if (f.kind === "photo" || f.kind === "multiple") rInit[f.id] = [];
+        else rInit[f.id] = "";
+      }
+      setRespondentValues(rInit);
     } catch {
       setErr("Network error");
     } finally {
@@ -114,157 +93,66 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
     load();
   }, [load]);
 
-  async function deleteBlobQuiet(url: string) {
-    try {
-      await fetch("/api/upload/shop-image", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      });
-    } catch {
-      /* ignore best-effort cleanup */
-    }
-  }
-
-  async function uploadShopImageRequest(
-    file: File,
-    signal?: AbortSignal
-  ): Promise<string> {
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await fetch("/api/upload/shop-image", {
-      method: "POST",
-      body: fd,
-      signal,
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error ?? "Upload failed");
-    }
-    if (typeof data.url !== "string") {
-      throw new Error("Invalid upload response");
-    }
-    return data.url;
-  }
-
-  async function onShopImageChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-
-    const slotId = crypto.randomUUID();
-    const abortController = new AbortController();
-    uploadAbortBySlotId.current.set(slotId, abortController);
-
-    flushSync(() => {
-      setShopImageSlots((slots) => [
-        ...slots,
-        { status: "uploading", id: slotId },
-      ]);
-    });
-
-    setErr(null);
-    try {
-      const url = await uploadShopImageRequest(file, abortController.signal);
-      setShopImageSlots((slots) => {
-        const stillThere = slots.some(
-          (s) => s.status === "uploading" && s.id === slotId
-        );
-        if (!stillThere) {
-          void deleteBlobQuiet(url);
-          return slots;
+  function validateRespondentBeforeSubmit(): string | null {
+    if (!respondentForm) return "Form not ready.";
+    for (const f of respondentForm.fields) {
+      if (f.kind === "photo") {
+        const urls = respondentValues[f.id];
+        const maxF = f.maxFiles ?? MAX_SHOP_IMAGES_PER_RESPONSE;
+        if (Array.isArray(urls) && urls.length > maxF) {
+          return `You can attach at most ${maxF} images for “${f.label}”. Remove some to continue.`;
         }
-        return slots.map((s) =>
-          s.status === "uploading" && s.id === slotId
-            ? { status: "done", url }
-            : s
-        );
-      });
-    } catch (c) {
-      if (c instanceof DOMException && c.name === "AbortError") {
-        return;
+        if (f.required && (!Array.isArray(urls) || urls.length === 0)) {
+          return `“${f.label}” requires at least one photo.`;
+        }
       }
-      setShopImageSlots((slots) =>
-        slots.filter((s) => !(s.status === "uploading" && s.id === slotId))
-      );
-      setErr(c instanceof Error ? c.message : "Upload failed");
-    } finally {
-      uploadAbortBySlotId.current.delete(slotId);
-    }
-  }
-
-  async function removeShopImageSlot(target: ShopImageSlot) {
-    if (target.status === "uploading") {
-      uploadAbortBySlotId.current.get(target.id)?.abort();
-      uploadAbortBySlotId.current.delete(target.id);
-      setShopImageSlots((slots) =>
-        slots.filter((s) => !(s.status === "uploading" && s.id === target.id))
-      );
-      return;
-    }
-
-    setErr(null);
-    try {
-      const res = await fetch("/api/upload/shop-image", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: target.url }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error ?? "Could not remove image");
+      if (f.kind === "multiple" && f.required) {
+        const arr = respondentValues[f.id];
+        if (!Array.isArray(arr) || arr.length === 0) {
+          return `Please select at least one option for “${f.label}”.`;
+        }
       }
-      setShopImageSlots((slots) =>
-        slots.filter((s) => !(s.status === "done" && s.url === target.url))
-      );
-    } catch (c) {
-      setErr(c instanceof Error ? c.message : "Could not remove image");
+      if (f.kind === "single" && f.required) {
+        const s = (respondentValues[f.id] as string) ?? "";
+        if (!s) {
+          return `Please choose an option for “${f.label}”.`;
+        }
+      }
+      if (f.kind === "text" && f.required) {
+        const s = (respondentValues[f.id] as string) ?? "";
+        if (!s.trim()) {
+          return `“${f.label}” is required.`;
+        }
+      }
     }
+    return null;
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!survey) return;
-    if (
-      shopOptions &&
-      categoryNeedsGenderSegment(shopCategory, shopOptions.categories) &&
-      !shopAudience
-    ) {
-      setErr(
-        "Please select who the shop mainly serves: male, female, or both."
-      );
+    if (!survey || !respondentForm) return;
+
+    const vErr = validateRespondentBeforeSubmit();
+    if (vErr) {
+      setErr(vErr);
       return;
     }
-    if (shopImageUrls.length > MAX_SHOP_IMAGES_PER_RESPONSE) {
-      setErr(
-        `You can attach at most ${MAX_SHOP_IMAGES_PER_RESPONSE} shop images. Remove some to continue.`
-      );
-      return;
-    }
+
     setSubmitting(true);
     setErr(null);
     const answers = survey.questions.map((q) => ({
       questionId: q.id,
       value: values[q.id],
     }));
-    const respondentInfo = {
-      shopName: shopName.trim(),
-      shopCategory,
-      market,
-      ...(shopOptions &&
-      categoryNeedsGenderSegment(shopCategory, shopOptions.categories) &&
-      shopAudience
-        ? { shopAudience }
-        : {}),
-      respondentName: respondentName.trim(),
-      whatsappContact: whatsappContact.trim(),
-      shopImageUrls,
-    };
+
     try {
       const res = await fetch(`/api/surveys/${surveyId}/responses`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ respondentInfo, answers }),
+        body: JSON.stringify({
+          respondentInfo: respondentValues,
+          answers,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -296,7 +184,7 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
       </div>
     );
   }
-  if (!survey || !shopOptions) return null;
+  if (!survey || !respondentForm) return null;
 
   if (done) {
     return (
@@ -343,283 +231,16 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
       </header>
 
       {hasQuestions ? (
-        <section
-          className="surface-card p-6 sm:p-8"
-          aria-labelledby={`${formId}-info-heading`}
-        >
-          <div className="flex items-start gap-3 border-b border-[var(--border)]/80 pb-5">
-            <span
-              className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-muted)] text-[var(--accent-hover)] ring-1 ring-indigo-500/15"
-              aria-hidden
-            >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </span>
-            <div>
-              <h2
-                id={`${formId}-info-heading`}
-                className="text-lg font-semibold text-white"
-              >
-                Your details
-              </h2>
-              <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">
-                Shop name, category, market, your name, WhatsApp, and optional
-                shop photos.
-              </p>
-            </div>
-          </div>
-          <div className="mt-6 space-y-5">
-            <div>
-              <label htmlFor={`${formId}-shop`} className="label-field">
-                Shop name <span className="text-red-400">*</span>
-              </label>
-              <input
-                id={`${formId}-shop`}
-                name="shopName"
-                required
-                value={shopName}
-                onChange={(e) => setShopName(e.target.value)}
-                className="input-field mt-2"
-                placeholder="e.g. Khan General Store"
-                maxLength={300}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label htmlFor={`${formId}-category`} className="label-field">
-                Shop category <span className="text-red-400">*</span>
-              </label>
-              <div className="relative">
-                <select
-                  id={`${formId}-category`}
-                  name="shopCategory"
-                  required
-                  value={shopCategory}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setShopCategory(v);
-                    if (!categoryNeedsGenderSegment(v, shopOptions.categories))
-                      setShopAudience("");
-                  }}
-                  className={`input-select ${shopCategory === "" ? "text-zinc-500" : "text-zinc-100"}`}
-                  aria-describedby={`${formId}-category-hint`}
-                >
-                  <option value="" disabled>
-                    Select category…
-                  </option>
-                  {shopOptions.categories.map((c) => (
-                    <option key={c.label} value={c.label}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <p
-                id={`${formId}-category-hint`}
-                className="text-xs leading-relaxed text-[var(--muted)]"
-              >
-                What does this shop mainly sell?
-              </p>
-              {categoryNeedsGenderSegment(
-                shopCategory,
-                shopOptions.categories
-              ) ? (
-                <div
-                  className="mt-4 space-y-3 rounded-xl border border-[var(--border)] bg-zinc-950/50 p-4"
-                  role="group"
-                  aria-labelledby={`${formId}-audience-label`}
-                >
-                  <p id={`${formId}-audience-label`} className="label-field">
-                    Who does this shop mainly serve?{" "}
-                    <span className="text-red-400">*</span>
-                  </p>
-                  <p className="text-xs text-[var(--muted)]">
-                    Tick one: male, female, or both.
-                  </p>
-                  <ul className="space-y-2">
-                    {(
-                      [
-                        { id: "male" as const, label: "Male" },
-                        { id: "female" as const, label: "Female" },
-                        { id: "both" as const, label: "Both" },
-                      ] as const
-                    ).map(({ id, label }) => (
-                      <li key={id}>
-                        <label
-                          className={`${optionBase} ${shopAudience === id ? optionActive : optionIdle}`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={shopAudience === id}
-                            onChange={(e) => {
-                              if (e.target.checked) setShopAudience(id);
-                              else if (shopAudience === id) setShopAudience("");
-                            }}
-                            className="h-4 w-4 shrink-0 rounded border-zinc-600 text-[var(--accent)] focus:ring-[var(--ring)]"
-                          />
-                          <span className="text-[15px] text-zinc-200">
-                            {label}
-                          </span>
-                        </label>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-            </div>
-            <div className="flex flex-col gap-2">
-              <label htmlFor={`${formId}-market`} className="label-field">
-                Market <span className="text-red-400">*</span>
-              </label>
-              <div className="relative">
-                <select
-                  id={`${formId}-market`}
-                  name="market"
-                  required
-                  value={market}
-                  onChange={(e) => setMarket(e.target.value)}
-                  className={`input-select ${market === "" ? "text-zinc-500" : "text-zinc-100"}`}
-                  aria-describedby={`${formId}-market-hint`}
-                >
-                  <option value="" disabled>
-                    Select market…
-                  </option>
-                  {shopOptions.markets.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <p
-                id={`${formId}-market-hint`}
-                className="text-xs leading-relaxed text-[var(--muted)]"
-              >
-                Flag which market this shop belongs to.
-              </p>
-            </div>
-            <div>
-              <label htmlFor={`${formId}-person`} className="label-field">
-                Your name <span className="text-red-400">*</span>
-              </label>
-              <input
-                id={`${formId}-person`}
-                name="respondentName"
-                required
-                value={respondentName}
-                onChange={(e) => setRespondentName(e.target.value)}
-                className="input-field mt-2"
-                placeholder="Person filling this survey"
-                maxLength={300}
-              />
-            </div>
-            <div>
-              <label htmlFor={`${formId}-wa`} className="label-field">
-                WhatsApp number <span className="text-red-400">*</span>
-              </label>
-              <input
-                id={`${formId}-wa`}
-                name="whatsappContact"
-                type="tel"
-                required
-                value={whatsappContact}
-                onChange={(e) => setWhatsappContact(e.target.value)}
-                className="input-field mt-2"
-                placeholder="+92 300 1234567"
-                maxLength={40}
-              />
-            </div>
-            <div>
-              <span className="label-field">
-                Shop images{" "}
-                <span className="font-normal text-zinc-500">(optional)</span>
-              </span>
-              <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
-                Use your camera on mobile, or pick from your gallery. JPEG,
-                PNG, WebP, or GIF — up to 5 MB each.
-              </p>
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                {shopImageSlots.map((slot) =>
-                  slot.status === "done" ? (
-                    <div
-                      key={slot.url}
-                      className="relative h-24 w-24 overflow-hidden rounded-xl border border-[var(--border)] bg-zinc-900 shadow-inner"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={slot.url}
-                        alt="Shop preview"
-                        className="h-full w-full object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => void removeShopImageSlot(slot)}
-                        className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-lg bg-black/75 text-sm text-white backdrop-blur-sm transition hover:bg-red-500/90"
-                        aria-label="Remove image"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ) : (
-                    <div
-                      key={slot.id}
-                      className="relative flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-[var(--border)] bg-zinc-950/80 text-[var(--muted)]"
-                    >
-                      <span
-                        className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-zinc-600 border-t-[var(--accent)]"
-                        aria-hidden
-                      />
-                      <span className="px-1 text-center text-[10px] font-medium leading-tight">
-                        Uploading…
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => void removeShopImageSlot(slot)}
-                        className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-lg bg-black/75 text-sm text-white backdrop-blur-sm transition hover:bg-red-500/90"
-                        aria-label="Cancel upload"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  )
-                )}
-                <div className="flex flex-wrap gap-2">
-                  <label className="btn-secondary cursor-pointer border-dashed py-2.5 text-xs sm:text-sm">
-                    Take photo
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="sr-only"
-                      onChange={onShopImageChange}
-                      aria-label="Take a photo with the camera"
-                    />
-                  </label>
-                  <label className="btn-secondary cursor-pointer border-dashed py-2.5 text-xs sm:text-sm">
-                    Gallery
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,image/gif"
-                      className="sr-only"
-                      onChange={onShopImageChange}
-                      aria-label="Choose an image from your device"
-                    />
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+        <RespondentFormSection
+          formId={formId}
+          title={respondentForm.sectionTitle}
+          description={respondentForm.sectionDescription}
+          fields={respondentForm.fields}
+          values={respondentValues}
+          onFieldChange={onRespondentFieldChange}
+          onImageUploadingChange={setRespondentUploading}
+          onClientError={setErr}
+        />
       ) : null}
 
       {!hasQuestions ? (
@@ -756,7 +377,7 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
       {hasQuestions && (
         <button
           type="submit"
-          disabled={submitting || hasUploadInFlight}
+          disabled={submitting || respondentUploading}
           className="btn-primary w-full py-3.5 text-base"
         >
           {submitting ? "Submitting…" : "Submit responses"}

@@ -1,22 +1,12 @@
 import mongoose, { Schema, models, model } from "mongoose";
-import { MAX_SHOP_IMAGES_PER_RESPONSE } from "@/lib/shopImageUrls";
 
 export interface IAnswer {
   questionId: string;
   value: string | string[];
 }
 
-export interface IRespondentInfo {
-  shopName: string;
-  market: string;
-  shopCategory: string;
-  /** Present when the shop category requires audience (see ShopOptions) */
-  shopAudience?: "male" | "female" | "both";
-  respondentName: string;
-  whatsappContact: string;
-  /** Vercel Blob HTTPS URLs from this app’s shop uploader (capped per response). */
-  shopImageUrls: string[];
-}
+/** Keys match `RespondentFormConfig` field ids (dynamic respondent section). */
+export type IRespondentInfo = Record<string, string | string[]>;
 
 export interface IResponse {
   _id: mongoose.Types.ObjectId;
@@ -34,31 +24,6 @@ const AnswerSchema = new Schema<IAnswer>(
   { _id: false }
 );
 
-const RespondentInfoSchema = new Schema<IRespondentInfo>(
-  {
-    shopName: { type: String, required: true },
-    market: { type: String, required: true },
-    shopCategory: { type: String, required: true },
-    shopAudience: {
-      type: String,
-      required: false,
-      enum: ["male", "female", "both"],
-    },
-    respondentName: { type: String, required: true },
-    whatsappContact: { type: String, required: true },
-    shopImageUrls: {
-      type: [String],
-      default: [],
-      validate: {
-        validator: (v: string[]) =>
-          Array.isArray(v) && v.length <= MAX_SHOP_IMAGES_PER_RESPONSE,
-        message: `At most ${MAX_SHOP_IMAGES_PER_RESPONSE} shop images`,
-      },
-    },
-  },
-  { _id: false }
-);
-
 const ResponseSchema = new Schema<IResponse>(
   {
     surveyId: {
@@ -67,7 +32,7 @@ const ResponseSchema = new Schema<IResponse>(
       required: true,
       index: true,
     },
-    respondentInfo: { type: RespondentInfoSchema, required: false },
+    respondentInfo: { type: Schema.Types.Mixed, required: false },
     answers: { type: [AnswerSchema], required: true },
   },
   { timestamps: { createdAt: true, updatedAt: false } }

@@ -3,174 +3,10 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
 import { Survey, type ISurvey } from "@/models/Survey";
 import { SurveyResponse, type IRespondentInfo } from "@/models/Response";
-import {
-  isAppShopImageBlobUrl,
-  MAX_SHOP_IMAGES_PER_RESPONSE,
-} from "@/lib/shopImageUrls";
-import { getOrCreateShopOptions } from "@/lib/shopOptionsStore";
-import type { IShopCategoryOption } from "@/models/ShopOptions";
-import { isShopMarket } from "@/lib/shopMarkets";
-import {
-  categoryNeedsGenderSegment,
-  isShopCategory,
-  isShopAudience,
-} from "@/lib/shopCategories";
+import { getOrCreateRespondentFormConfig } from "@/lib/respondentFormStore";
+import { validateRespondentSubmission } from "@/lib/validateRespondentSubmission";
 
 type RouteParams = { params: Promise<{ id: string }> };
-
-const MAX_FIELD = 300;
-
-function parseRespondentInfo(
-  raw: unknown,
-  shop: { markets: string[]; categories: IShopCategoryOption[] }
-): IRespondentInfo | NextResponse {
-  if (raw == null || typeof raw !== "object") {
-    return NextResponse.json(
-      { error: "respondentInfo is required" },
-      { status: 400 }
-    );
-  }
-  const o = raw as Record<string, unknown>;
-  const shopName =
-    typeof o.shopName === "string" ? o.shopName.trim() : "";
-  const marketRaw = typeof o.market === "string" ? o.market.trim() : "";
-  const respondentName =
-    typeof o.respondentName === "string" ? o.respondentName.trim() : "";
-  const whatsappContact =
-    typeof o.whatsappContact === "string" ? o.whatsappContact.trim() : "";
-  const urlsRaw = o.shopImageUrls;
-
-  if (!shopName || shopName.length > MAX_FIELD) {
-    return NextResponse.json(
-      { error: "Shop name is required (max 300 characters)." },
-      { status: 400 }
-    );
-  }
-  if (!marketRaw || !isShopMarket(marketRaw, shop.markets)) {
-    return NextResponse.json(
-      { error: "Please select a valid market." },
-      { status: 400 }
-    );
-  }
-  const market = marketRaw;
-
-  const shopCategoryRaw =
-    typeof o.shopCategory === "string" ? o.shopCategory.trim() : "";
-  if (!shopCategoryRaw || !isShopCategory(shopCategoryRaw, shop.categories)) {
-    return NextResponse.json(
-      { error: "Please select a valid shop category." },
-      { status: 400 }
-    );
-  }
-  const shopCategory = shopCategoryRaw;
-
-  const audienceRaw = o.shopAudience;
-  const needsAudience = categoryNeedsGenderSegment(
-    shopCategory,
-    shop.categories
-  );
-  let shopAudience: "male" | "female" | "both" | undefined;
-
-  if (needsAudience) {
-    if (
-      typeof audienceRaw !== "string" ||
-      !isShopAudience(audienceRaw.trim())
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "For this category, select who the shop mainly serves: male, female, or both.",
-        },
-        { status: 400 }
-      );
-    }
-    shopAudience = audienceRaw.trim() as "male" | "female" | "both";
-  } else if (audienceRaw != null && audienceRaw !== "") {
-    if (typeof audienceRaw !== "string" || !isShopAudience(audienceRaw.trim())) {
-      return NextResponse.json(
-        { error: "Invalid shopAudience value." },
-        { status: 400 }
-      );
-    }
-    return NextResponse.json(
-      {
-        error:
-          "Customer segment (male / female / both) only applies to categories that require it.",
-      },
-      { status: 400 }
-    );
-  }
-
-  if (!respondentName || respondentName.length > MAX_FIELD) {
-    return NextResponse.json(
-      { error: "Your name is required (max 300 characters)." },
-      { status: 400 }
-    );
-  }
-  if (!whatsappContact || whatsappContact.length > MAX_FIELD) {
-    return NextResponse.json(
-      { error: "WhatsApp contact is required (max 300 characters)." },
-      { status: 400 }
-    );
-  }
-  if (!/^[\d\s+()-]{6,40}$/.test(whatsappContact)) {
-    return NextResponse.json(
-      {
-        error:
-          "WhatsApp number should contain digits (and optional +, spaces, or parentheses).",
-      },
-      { status: 400 }
-    );
-  }
-
-  let shopImageUrls: string[] = [];
-  if (urlsRaw === undefined || urlsRaw === null) {
-    shopImageUrls = [];
-  } else if (!Array.isArray(urlsRaw)) {
-    return NextResponse.json(
-      { error: "shopImageUrls must be an array of URLs" },
-      { status: 400 }
-    );
-  } else {
-    if (urlsRaw.length > MAX_SHOP_IMAGES_PER_RESPONSE) {
-      return NextResponse.json(
-        {
-          error: `At most ${MAX_SHOP_IMAGES_PER_RESPONSE} shop images allowed.`,
-        },
-        { status: 400 }
-      );
-    }
-    for (const item of urlsRaw) {
-      if (typeof item !== "string" || !item.trim()) {
-        return NextResponse.json(
-          { error: "Each image must be a non-empty URL string" },
-          { status: 400 }
-        );
-      }
-      const u = item.trim();
-      if (!isAppShopImageBlobUrl(u)) {
-        return NextResponse.json(
-          {
-            error:
-              "Shop images must be HTTPS URLs from this app’s shop image uploads.",
-          },
-          { status: 400 }
-        );
-      }
-      shopImageUrls.push(u);
-    }
-  }
-
-  return {
-    shopName,
-    market,
-    shopCategory,
-    ...(shopAudience != null ? { shopAudience } : {}),
-    respondentName,
-    whatsappContact,
-    shopImageUrls,
-  };
-}
 
 export async function POST(req: Request, { params }: RouteParams) {
   const { id: surveyId } = await params;
@@ -189,17 +25,15 @@ export async function POST(req: Request, { params }: RouteParams) {
     }
 
     await connectDB();
-    const shopOptsDoc = await getOrCreateShopOptions();
-    const shopOpts = {
-      markets: shopOptsDoc.markets,
-      categories: shopOptsDoc.categories,
-    };
-
-    const respondentParsed = parseRespondentInfo(body.respondentInfo, shopOpts);
+    const { fields } = await getOrCreateRespondentFormConfig();
+    const respondentParsed = validateRespondentSubmission(
+      body.respondentInfo,
+      fields
+    );
     if (respondentParsed instanceof NextResponse) {
       return respondentParsed;
     }
-    const respondentInfo = respondentParsed;
+    const respondentInfo = respondentParsed as IRespondentInfo;
 
     const survey = await Survey.findById(surveyId).lean<ISurvey | null>();
     if (!survey) {
