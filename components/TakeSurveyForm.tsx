@@ -1,8 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useId, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { flushSync } from "react-dom";
 import type { SurveyQuestion } from "@/types/survey";
 import { categoryNeedsGenderSegment } from "@/lib/shopCategories";
+import { MAX_SHOP_IMAGES_PER_RESPONSE } from "@/lib/shopImageUrls";
 
 type ShopOptionsPayload = {
   markets: string[];
@@ -15,6 +24,10 @@ type SurveyDoc = {
   description: string;
   questions: SurveyQuestion[];
 };
+
+type ShopImageSlot =
+  | { status: "uploading"; id: string }
+  | { status: "done"; url: string };
 
 export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
   const formId = useId();
@@ -37,8 +50,16 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
   const [market, setMarket] = useState("");
   const [respondentName, setRespondentName] = useState("");
   const [whatsappContact, setWhatsappContact] = useState("");
-  const [shopImageUrls, setShopImageUrls] = useState<string[]>([]);
-  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+  const [shopImageSlots, setShopImageSlots] = useState<ShopImageSlot[]>([]);
+  const uploadAbortBySlotId = useRef(new Map<string, AbortController>());
+  const shopImageUrls = useMemo(
+    () =>
+      shopImageSlots
+        .filter((s): s is { status: "done"; url: string } => s.status === "done")
+        .map((s) => s.url),
+    [shopImageSlots]
+  );
+  const hasUploadInFlight = shopImageSlots.some((s) => s.status === "uploading");
 
   const load = useCallback(async () => {
     setErr(null);
@@ -93,13 +114,28 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
     load();
   }, [load]);
 
-  async function uploadShopImage(file: File) {
-    if (shopImageUrls.length >= 3) return;
+  async function deleteBlobQuiet(url: string) {
+    try {
+      await fetch("/api/upload/shop-image", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+    } catch {
+      /* ignore best-effort cleanup */
+    }
+  }
+
+  async function uploadShopImageRequest(
+    file: File,
+    signal?: AbortSignal
+  ): Promise<string> {
     const fd = new FormData();
     fd.append("file", file);
     const res = await fetch("/api/upload/shop-image", {
       method: "POST",
       body: fd,
+      signal,
     });
     const data = await res.json();
     if (!res.ok) {
@@ -108,26 +144,82 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
     if (typeof data.url !== "string") {
       throw new Error("Invalid upload response");
     }
-    setShopImageUrls((prev) => [...prev, data.url].slice(0, 3));
+    return data.url;
   }
 
   async function onShopImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file || shopImageUrls.length >= 3) return;
-    setUploadingIndex(shopImageUrls.length);
+    if (!file) return;
+
+    const slotId = crypto.randomUUID();
+    const abortController = new AbortController();
+    uploadAbortBySlotId.current.set(slotId, abortController);
+
+    flushSync(() => {
+      setShopImageSlots((slots) => [
+        ...slots,
+        { status: "uploading", id: slotId },
+      ]);
+    });
+
     setErr(null);
     try {
-      await uploadShopImage(file);
+      const url = await uploadShopImageRequest(file, abortController.signal);
+      setShopImageSlots((slots) => {
+        const stillThere = slots.some(
+          (s) => s.status === "uploading" && s.id === slotId
+        );
+        if (!stillThere) {
+          void deleteBlobQuiet(url);
+          return slots;
+        }
+        return slots.map((s) =>
+          s.status === "uploading" && s.id === slotId
+            ? { status: "done", url }
+            : s
+        );
+      });
     } catch (c) {
+      if (c instanceof DOMException && c.name === "AbortError") {
+        return;
+      }
+      setShopImageSlots((slots) =>
+        slots.filter((s) => !(s.status === "uploading" && s.id === slotId))
+      );
       setErr(c instanceof Error ? c.message : "Upload failed");
     } finally {
-      setUploadingIndex(null);
+      uploadAbortBySlotId.current.delete(slotId);
     }
   }
 
-  function removeShopImage(url: string) {
-    setShopImageUrls((prev) => prev.filter((u) => u !== url));
+  async function removeShopImageSlot(target: ShopImageSlot) {
+    if (target.status === "uploading") {
+      uploadAbortBySlotId.current.get(target.id)?.abort();
+      uploadAbortBySlotId.current.delete(target.id);
+      setShopImageSlots((slots) =>
+        slots.filter((s) => !(s.status === "uploading" && s.id === target.id))
+      );
+      return;
+    }
+
+    setErr(null);
+    try {
+      const res = await fetch("/api/upload/shop-image", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: target.url }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "Could not remove image");
+      }
+      setShopImageSlots((slots) =>
+        slots.filter((s) => !(s.status === "done" && s.url === target.url))
+      );
+    } catch (c) {
+      setErr(c instanceof Error ? c.message : "Could not remove image");
+    }
   }
 
   async function submit(e: React.FormEvent) {
@@ -140,6 +232,12 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
     ) {
       setErr(
         "Please select who the shop mainly serves: male, female, or both."
+      );
+      return;
+    }
+    if (shopImageUrls.length > MAX_SHOP_IMAGES_PER_RESPONSE) {
+      setErr(
+        `You can attach at most ${MAX_SHOP_IMAGES_PER_RESPONSE} shop images. Remove some to continue.`
       );
       return;
     }
@@ -276,8 +374,8 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
                 Your details
               </h2>
               <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">
-                Shop name, category, market, your name, WhatsApp, and up to three
-                shop photos (optional).
+                Shop name, category, market, your name, WhatsApp, and optional
+                shop photos.
               </p>
             </div>
           </div>
@@ -444,66 +542,80 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
             <div>
               <span className="label-field">
                 Shop images{" "}
-                <span className="font-normal text-zinc-500">(optional, max 3)</span>
+                <span className="font-normal text-zinc-500">(optional)</span>
               </span>
               <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
                 Use your camera on mobile, or pick from your gallery. JPEG,
                 PNG, WebP, or GIF — up to 5 MB each.
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-3">
-                {shopImageUrls.map((url) => (
-                  <div
-                    key={url}
-                    className="relative h-24 w-24 overflow-hidden rounded-xl border border-[var(--border)] bg-zinc-900 shadow-inner"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={url}
-                      alt="Shop preview"
-                      className="h-full w-full object-cover"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeShopImage(url)}
-                      className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-lg bg-black/75 text-sm text-white backdrop-blur-sm transition hover:bg-red-500/90"
-                      aria-label="Remove image"
+                {shopImageSlots.map((slot) =>
+                  slot.status === "done" ? (
+                    <div
+                      key={slot.url}
+                      className="relative h-24 w-24 overflow-hidden rounded-xl border border-[var(--border)] bg-zinc-900 shadow-inner"
                     >
-                      ×
-                    </button>
-                  </div>
-                ))}
-                {shopImageUrls.length < 3 ? (
-                  uploadingIndex !== null ? (
-                    <p className="flex items-center gap-2 text-sm text-[var(--muted)]">
-                      <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-zinc-600 border-t-[var(--accent)]" />
-                      Uploading…
-                    </p>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={slot.url}
+                        alt="Shop preview"
+                        className="h-full w-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void removeShopImageSlot(slot)}
+                        className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-lg bg-black/75 text-sm text-white backdrop-blur-sm transition hover:bg-red-500/90"
+                        aria-label="Remove image"
+                      >
+                        ×
+                      </button>
+                    </div>
                   ) : (
-                    <div className="flex flex-wrap gap-2">
-                      <label className="btn-secondary cursor-pointer border-dashed py-2.5 text-xs sm:text-sm">
-                        Take photo
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          className="sr-only"
-                          onChange={onShopImageChange}
-                          aria-label="Take a photo with the camera"
-                        />
-                      </label>
-                      <label className="btn-secondary cursor-pointer border-dashed py-2.5 text-xs sm:text-sm">
-                        Gallery
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp,image/gif"
-                          className="sr-only"
-                          onChange={onShopImageChange}
-                          aria-label="Choose an image from your device"
-                        />
-                      </label>
+                    <div
+                      key={slot.id}
+                      className="relative flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-[var(--border)] bg-zinc-950/80 text-[var(--muted)]"
+                    >
+                      <span
+                        className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-zinc-600 border-t-[var(--accent)]"
+                        aria-hidden
+                      />
+                      <span className="px-1 text-center text-[10px] font-medium leading-tight">
+                        Uploading…
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void removeShopImageSlot(slot)}
+                        className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-lg bg-black/75 text-sm text-white backdrop-blur-sm transition hover:bg-red-500/90"
+                        aria-label="Cancel upload"
+                      >
+                        ×
+                      </button>
                     </div>
                   )
-                ) : null}
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <label className="btn-secondary cursor-pointer border-dashed py-2.5 text-xs sm:text-sm">
+                    Take photo
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="sr-only"
+                      onChange={onShopImageChange}
+                      aria-label="Take a photo with the camera"
+                    />
+                  </label>
+                  <label className="btn-secondary cursor-pointer border-dashed py-2.5 text-xs sm:text-sm">
+                    Gallery
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="sr-only"
+                      onChange={onShopImageChange}
+                      aria-label="Choose an image from your device"
+                    />
+                  </label>
+                </div>
               </div>
             </div>
           </div>
@@ -644,7 +756,7 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
       {hasQuestions && (
         <button
           type="submit"
-          disabled={submitting || uploadingIndex !== null}
+          disabled={submitting || hasUploadInFlight}
           className="btn-primary w-full py-3.5 text-base"
         >
           {submitting ? "Submitting…" : "Submit responses"}

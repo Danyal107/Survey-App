@@ -3,7 +3,10 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
 import { Survey, type ISurvey } from "@/models/Survey";
 import { SurveyResponse, type IRespondentInfo } from "@/models/Response";
-import { isVercelBlobPublicUrl } from "@/lib/shopImageUrls";
+import {
+  isAppShopImageBlobUrl,
+  MAX_SHOP_IMAGES_PER_RESPONSE,
+} from "@/lib/shopImageUrls";
 import { getOrCreateShopOptions } from "@/lib/shopOptionsStore";
 import type { IShopCategoryOption } from "@/models/ShopOptions";
 import { isShopMarket } from "@/lib/shopMarkets";
@@ -129,9 +132,11 @@ function parseRespondentInfo(
       { status: 400 }
     );
   } else {
-    if (urlsRaw.length > 3) {
+    if (urlsRaw.length > MAX_SHOP_IMAGES_PER_RESPONSE) {
       return NextResponse.json(
-        { error: "At most 3 shop images allowed" },
+        {
+          error: `At most ${MAX_SHOP_IMAGES_PER_RESPONSE} shop images allowed.`,
+        },
         { status: 400 }
       );
     }
@@ -143,9 +148,12 @@ function parseRespondentInfo(
         );
       }
       const u = item.trim();
-      if (!isVercelBlobPublicUrl(u)) {
+      if (!isAppShopImageBlobUrl(u)) {
         return NextResponse.json(
-          { error: "Shop images must be valid Vercel Blob (https) URLs" },
+          {
+            error:
+              "Shop images must be HTTPS URLs from this app’s shop image uploads.",
+          },
           { status: 400 }
         );
       }

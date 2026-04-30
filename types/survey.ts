@@ -26,6 +26,6 @@ export interface RespondentInfoPayload {
   shopAudience?: "male" | "female" | "both";
   respondentName: string;
   whatsappContact: string;
-  /** Max 3 HTTPS URLs from this app’s Vercel Blob upload API */
+  /** HTTPS URLs from this app’s shop image uploader (see `MAX_SHOP_IMAGES_PER_RESPONSE`). */
   shopImageUrls: string[];
 }

@@ -1,4 +1,5 @@
 import mongoose, { Schema, models, model } from "mongoose";
+import { MAX_SHOP_IMAGES_PER_RESPONSE } from "@/lib/shopImageUrls";
 
 export interface IAnswer {
   questionId: string;
@@ -13,7 +14,7 @@ export interface IRespondentInfo {
   shopAudience?: "male" | "female" | "both";
   respondentName: string;
   whatsappContact: string;
-  /** Up to 3 Vercel Blob public HTTPS URLs */
+  /** Vercel Blob HTTPS URLs from this app’s shop uploader (capped per response). */
   shopImageUrls: string[];
 }
 
@@ -49,8 +50,9 @@ const RespondentInfoSchema = new Schema<IRespondentInfo>(
       type: [String],
       default: [],
       validate: {
-        validator: (v: string[]) => Array.isArray(v) && v.length <= 3,
-        message: "At most 3 shop images",
+        validator: (v: string[]) =>
+          Array.isArray(v) && v.length <= MAX_SHOP_IMAGES_PER_RESPONSE,
+        message: `At most ${MAX_SHOP_IMAGES_PER_RESPONSE} shop images`,
       },
     },
   },
