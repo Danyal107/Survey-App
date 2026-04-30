@@ -67,7 +67,10 @@ export type RespondentFormDTO = {
   updatedAt: string | null;
 };
 
-/** Values submitted under `respondentInfo` (keys = field ids). */
+/**
+ * Client sends this as `respondentInfo`; the API moves every field onto `Shop`
+ * and saves only `shopId` on the response.
+ */
 export type RespondentValuesPayload = Record<
   string,
   string | string[] | RespondentLocationValue

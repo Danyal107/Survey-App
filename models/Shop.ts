@@ -1,4 +1,5 @@
 import mongoose, { Schema, models, model } from "mongoose";
+import { canonicalCoordPair } from "@/lib/canonicalCoords";
 
 /** Shop profile keyed by respondent field ids (e.g. shopName, market). */
 export type IShopDetails = Record<string, string | string[]>;
@@ -34,5 +35,24 @@ const ShopSchema = new Schema<IShop>(
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );
+
+/** One map pin per shop; enforced at DB level (pair must be unique when set). */
+ShopSchema.index(
+  { "coordinates.0": 1, "coordinates.1": 1 },
+  { unique: true, sparse: true }
+);
+
+ShopSchema.pre("save", function (next) {
+  const c = this.coordinates;
+  if (
+    Array.isArray(c) &&
+    c.length === 2 &&
+    typeof c[0] === "number" &&
+    typeof c[1] === "number"
+  ) {
+    this.set("coordinates", canonicalCoordPair([c[0], c[1]]));
+  }
+  next();
+});
 
 export const Shop = models.Shop ?? model<IShop>("Shop", ShopSchema);

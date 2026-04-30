@@ -7,11 +7,11 @@ import { Shop } from "@/models/Shop";
 import { SurveyResponse, type IRespondentInfo } from "@/models/Response";
 import { getOrCreateRespondentFormConfig } from "@/lib/respondentFormStore";
 import { validateRespondentSubmission } from "@/lib/validateRespondentSubmission";
+import { splitRespondentForShop } from "@/lib/respondentShopSplit";
 import {
-  DEFAULT_SHOP_FIELD_IDS,
-  splitRespondentForShop,
-} from "@/lib/respondentShopSplit";
-import { normalizeShopDetailsAndCoords } from "@/lib/shopCoordinates";
+  normalizeShopDetailsAndCoords,
+  shopExistsAtCoordinates,
+} from "@/lib/shopCoordinates";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -139,8 +139,10 @@ export async function POST(req: Request, { params }: RouteParams) {
       resolvedShopId = existingShop._id as mongoose.Types.ObjectId;
     }
 
-    const { shop: shopPayload, respondent: respondentOnly } =
-      splitRespondentForShop(respondentFull, DEFAULT_SHOP_FIELD_IDS);
+    const { shop: shopPayload } = splitRespondentForShop(
+      respondentFull,
+      fields
+    );
 
     if (resolvedShopId) {
       if (Object.keys(shopPayload).length > 0) {
@@ -158,6 +160,19 @@ export async function POST(req: Request, { params }: RouteParams) {
               : {};
           shopDoc.details = { ...prev, ...normalized.details };
           if (normalized.coordinates) {
+            const taken = await shopExistsAtCoordinates(
+              normalized.coordinates,
+              resolvedShopId
+            );
+            if (taken) {
+              return NextResponse.json(
+                {
+                  error:
+                    "Another shop is already registered at this map location. Move the pin or use that shop.",
+                },
+                { status: 409 }
+              );
+            }
             shopDoc.coordinates = normalized.coordinates;
           }
           await shopDoc.save();
@@ -165,6 +180,18 @@ export async function POST(req: Request, { params }: RouteParams) {
       }
     } else if (Object.keys(shopPayload).length > 0) {
       const normalized = normalizeShopDetailsAndCoords(shopPayload);
+      if (normalized.coordinates) {
+        const taken = await shopExistsAtCoordinates(normalized.coordinates);
+        if (taken) {
+          return NextResponse.json(
+            {
+              error:
+                "Another shop is already registered at this map location. Move the pin slightly.",
+            },
+            { status: 409 }
+          );
+        }
+      }
       const shopDoc = await Shop.create({
         details: normalized.details,
         ...(normalized.coordinates
@@ -177,8 +204,6 @@ export async function POST(req: Request, { params }: RouteParams) {
     const doc = await SurveyResponse.create({
       surveyId: surveyId,
       shopId: resolvedShopId,
-      respondentInfo:
-        Object.keys(respondentOnly).length > 0 ? respondentOnly : undefined,
       answers: normalized,
     });
 
@@ -189,6 +214,22 @@ export async function POST(req: Request, { params }: RouteParams) {
     });
   } catch (e) {
     console.error(e);
+    if (
+      e instanceof mongoose.mongo.MongoServerError &&
+      e.code === 11000 &&
+      e.keyPattern &&
+      typeof e.keyPattern === "object" &&
+      "coordinates.0" in e.keyPattern &&
+      "coordinates.1" in e.keyPattern
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Another shop is already registered at this map location. Move the pin slightly.",
+        },
+        { status: 409 }
+      );
+    }
     return NextResponse.json(
       { error: "Failed to save response" },
       { status: 500 }

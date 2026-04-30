@@ -5,7 +5,10 @@ export interface IAnswer {
   value: string | string[];
 }
 
-/** Keys match `RespondentFormConfig` field ids (dynamic respondent section). */
+/**
+ * Shape of the respondent block during validation / transport. Values are
+ * persisted on `Shop`, not on `SurveyResponse` (except legacy rows).
+ */
 export type IRespondentInfo = Record<
   string,
   string | string[] | { lat: number; lng: number }
@@ -17,8 +20,8 @@ export interface IResponse {
   /** Shop profile for this submission (`Shop` collection). */
   shopId?: mongoose.Types.ObjectId;
   /**
-   * Respondent answers not stored on `Shop` (e.g. name, WhatsApp).
-   * Shop-related keys are in `Shop.details` when `shopId` is set.
+   * Legacy: older responses may have per-field data here. New submissions
+   * store the whole respondent section on `Shop` and omit this field.
    */
   respondentInfo?: IRespondentInfo;
   answers: IAnswer[];
