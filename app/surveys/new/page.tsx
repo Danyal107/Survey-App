@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "@/lib/toast";
 
 export default function NewSurveyPage() {
   const router = useRouter();
@@ -22,11 +23,14 @@ export default function NewSurveyPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setErr(data.error ?? "Failed to create");
+        const msg = data.error ?? "Failed to create";
+        toast.error(msg);
+        setErr(msg);
         return;
       }
       router.push(`/surveys/${data._id}/edit`);
     } catch {
+      toast.error("Network error");
       setErr("Network error");
     } finally {
       setLoading(false);

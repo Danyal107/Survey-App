@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ServerMessageToast } from "@/components/ServerMessageToast";
 import { connectDB } from "@/lib/db";
 import { Survey } from "@/models/Survey";
 
@@ -32,6 +33,7 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-10">
+      <ServerMessageToast message={error} variant="error" />
       <header className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-hover)]">
           Dashboard
@@ -44,15 +46,6 @@ export default async function HomePage() {
           analytics—all in one place.
         </p>
       </header>
-
-      {error && (
-        <div
-          className="rounded-2xl border border-amber-500/35 bg-amber-500/[0.08] px-5 py-4 text-sm leading-relaxed text-amber-100 shadow-sm shadow-amber-950/20"
-          role="alert"
-        >
-          {error}
-        </div>
-      )}
 
       {!error && surveys.length === 0 && (
         <div className="surface-card max-w-lg p-8 text-center">

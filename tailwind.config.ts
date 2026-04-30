@@ -12,6 +12,15 @@ const config: Config = {
         sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
         mono: ["var(--font-geist-mono)", "monospace"],
       },
+      keyframes: {
+        "toast-in": {
+          from: { opacity: "0", transform: "translateY(0.5rem)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+      },
+      animation: {
+        "toast-in": "toast-in 0.22s ease-out both",
+      },
     },
   },
   plugins: [],

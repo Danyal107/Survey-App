@@ -8,6 +8,7 @@ import type {
   RespondentFormDTO,
 } from '@/types/respondentForm';
 import { formatDateTimeMedium } from '@/lib/formatDate';
+import { toast } from '@/lib/toast';
 
 const KINDS: { value: RespondentFieldKind; label: string }[] = [
   { value: 'text', label: 'Text' },
@@ -90,7 +91,9 @@ export function RespondentFormEditor() {
       const res = await fetch('/api/respondent-form');
       const data = await res.json();
       if (!res.ok) {
-        setErr(data.error ?? 'Failed to load');
+        const msg = data.error ?? 'Failed to load';
+        toast.error(msg);
+        setErr(msg);
         return;
       }
       const payload = data as RespondentFormDTO;
@@ -99,6 +102,7 @@ export function RespondentFormEditor() {
       setFields(withStableKeys(payload.fields));
       setUpdatedAt(payload.updatedAt);
     } catch {
+      toast.error('Network error');
       setErr('Network error');
     } finally {
       setLoading(false);
@@ -227,7 +231,9 @@ export function RespondentFormEditor() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setErr(data.error ?? 'Save failed');
+        const msg = data.error ?? 'Save failed';
+        toast.error(msg);
+        setErr(msg);
         return;
       }
       const payload = data as RespondentFormDTO;
@@ -236,8 +242,10 @@ export function RespondentFormEditor() {
       setFields(withStableKeys(payload.fields));
       setUpdatedAt(payload.updatedAt);
       setMsg('Saved');
+      toast.success('Respondent form saved');
       setTimeout(() => setMsg(null), 2000);
     } catch {
+      toast.error('Network error');
       setErr('Network error');
     } finally {
       setSaving(false);

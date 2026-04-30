@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { toast } from "@/lib/toast";
 import type { QuestionType } from "@/types/survey";
 
 type AnalyticsPayload = {
@@ -30,11 +31,14 @@ export function AnalyticsDashboard({ surveyId }: { surveyId: string }) {
       const res = await fetch(`/api/surveys/${surveyId}/analytics`);
       const json = await res.json();
       if (!res.ok) {
-        setErr(json.error ?? "Failed to load");
+        const msg = json.error ?? "Failed to load";
+        toast.error(msg);
+        setErr(msg);
         return;
       }
       setData(json);
     } catch {
+      toast.error("Network error");
       setErr("Network error");
     } finally {
       setLoading(false);

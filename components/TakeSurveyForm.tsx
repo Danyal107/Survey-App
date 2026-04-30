@@ -8,6 +8,7 @@ import type {
 } from "@/types/respondentForm";
 import { isLocationValue } from "@/lib/shopCoordinates";
 import { MAX_SHOP_IMAGES_PER_RESPONSE } from "@/lib/shopImageUrls";
+import { toast } from "@/lib/toast";
 import { RespondentFormSection } from "@/components/RespondentFormSection";
 
 type SurveyDoc = {
@@ -47,6 +48,12 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
     []
   );
 
+  const reportClientError = useCallback((message: string) => {
+    const m = message.trim() || "Something went wrong";
+    setErr(m);
+    toast.error(m);
+  }, []);
+
   const load = useCallback(async () => {
     setErr(null);
     try {
@@ -58,18 +65,24 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
       const formData = await formRes.json();
 
       if (!surveyRes.ok) {
-        setErr(surveyData.error ?? "Not found");
+        const msg = surveyData.error ?? "Not found";
+        toast.error(msg);
+        setErr(msg);
         return;
       }
       if (!formRes.ok) {
-        setErr(formData.error ?? "Failed to load respondent form");
+        const msg = formData.error ?? "Failed to load respondent form";
+        toast.error(msg);
+        setErr(msg);
         return;
       }
 
       const form = formData as RespondentFormDTO;
 
       if (!Array.isArray(form.fields) || form.fields.length === 0) {
-        setErr("Respondent form has no fields configured.");
+        const msg = "Respondent form has no fields configured.";
+        toast.error(msg);
+        setErr(msg);
         return;
       }
 
@@ -98,6 +111,7 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
       }
       setRespondentValues(rInit);
     } catch {
+      toast.error("Network error");
       setErr("Network error");
     } finally {
       setLoading(false);
@@ -155,6 +169,7 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
 
     const vErr = validateRespondentBeforeSubmit();
     if (vErr) {
+      toast.error(vErr);
       setErr(vErr);
       return;
     }
@@ -177,11 +192,15 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
       });
       const data = await res.json();
       if (!res.ok) {
-        setErr(data.error ?? "Submit failed");
+        const msg = data.error ?? "Submit failed";
+        toast.error(msg);
+        setErr(msg);
         return;
       }
+      toast.success("Thank you — your response was recorded.");
       setDone(true);
     } catch {
+      toast.error("Network error");
       setErr("Network error");
     } finally {
       setSubmitting(false);
@@ -260,7 +279,7 @@ export function TakeSurveyForm({ surveyId }: { surveyId: string }) {
           values={respondentValues}
           onFieldChange={onRespondentFieldChange}
           onImageUploadingChange={setRespondentUploading}
-          onClientError={setErr}
+          onClientError={reportClientError}
         />
       ) : null}
 

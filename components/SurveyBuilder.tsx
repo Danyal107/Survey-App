@@ -1,9 +1,10 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import type { QuestionType, SurveyQuestion } from "@/types/survey";
+import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import type { QuestionType, SurveyQuestion } from '@/types/survey';
+import { toast } from '@/lib/toast';
 
 type SurveyDoc = {
   _id: string;
@@ -15,9 +16,9 @@ type SurveyDoc = {
 function newQuestion(partial?: Partial<SurveyQuestion>): SurveyQuestion {
   return {
     id: crypto.randomUUID(),
-    text: "",
-    type: "single",
-    options: ["", ""],
+    text: '',
+    type: 'single',
+    options: ['', ''],
     required: true,
     ...partial,
   };
@@ -37,13 +38,15 @@ export function SurveyBuilder({ surveyId }: { surveyId: string }) {
       const res = await fetch(`/api/surveys/${surveyId}`);
       const data = await res.json();
       if (!res.ok) {
-        setErr(data.error ?? "Failed to load");
+        const msg = data.error ?? 'Failed to load';
+        toast.error(msg);
+        setErr(msg);
         return;
       }
       setSurvey({
         _id: data._id,
         title: data.title,
-        description: data.description ?? "",
+        description: data.description ?? '',
         questions: (data.questions ?? []).map((q: SurveyQuestion) => ({
           ...q,
           options: q.options ?? [],
@@ -51,7 +54,8 @@ export function SurveyBuilder({ surveyId }: { surveyId: string }) {
         })),
       });
     } catch {
-      setErr("Network error");
+      toast.error('Network error');
+      setErr('Network error');
     } finally {
       setLoading(false);
     }
@@ -68,15 +72,15 @@ export function SurveyBuilder({ surveyId }: { surveyId: string }) {
     setMsg(null);
     try {
       const res = await fetch(`/api/surveys/${surveyId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: survey.title,
           description: survey.description,
           questions: survey.questions.map((q) => ({
             ...q,
             options:
-              q.type === "text"
+              q.type === 'text'
                 ? []
                 : q.options.map((o) => o.trim()).filter(Boolean),
           })),
@@ -84,38 +88,45 @@ export function SurveyBuilder({ surveyId }: { surveyId: string }) {
       });
       const data = await res.json();
       if (!res.ok) {
-        setErr(data.error ?? "Save failed");
+        const msg = data.error ?? 'Save failed';
+        toast.error(msg);
+        setErr(msg);
         return;
       }
       setSurvey({
         _id: data._id,
         title: data.title,
-        description: data.description ?? "",
+        description: data.description ?? '',
         questions: data.questions ?? [],
       });
-      setMsg("Saved");
+      setMsg('Saved');
+      toast.success('Survey saved');
       setTimeout(() => setMsg(null), 2000);
       router.refresh();
     } catch {
-      setErr("Network error");
+      toast.error('Network error');
+      setErr('Network error');
     } finally {
       setSaving(false);
     }
   }
 
   async function removeSurvey() {
-    if (!confirm("Delete this survey and all responses?")) return;
+    if (!confirm('Delete this survey and all responses?')) return;
     try {
-      const res = await fetch(`/api/surveys/${surveyId}`, { method: "DELETE" });
+      const res = await fetch(`/api/surveys/${surveyId}`, { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json();
-        setErr(data.error ?? "Delete failed");
+        const msg = data.error ?? 'Delete failed';
+        toast.error(msg);
+        setErr(msg);
         return;
       }
-      router.push("/");
+      router.push('/');
       router.refresh();
     } catch {
-      setErr("Network error");
+      toast.error('Network error');
+      setErr('Network error');
     }
   }
 
@@ -142,13 +153,13 @@ export function SurveyBuilder({ surveyId }: { surveyId: string }) {
       if (!s) return s;
       const questions = [...s.questions];
       const cur = { ...questions[index], ...patch };
-      if (patch.type === "text") {
+      if (patch.type === 'text') {
         cur.options = [];
       } else if (
-        (patch.type === "single" || patch.type === "multiple") &&
+        (patch.type === 'single' || patch.type === 'multiple') &&
         cur.options.length === 0
       ) {
-        cur.options = ["", ""];
+        cur.options = ['', ''];
       }
       questions[index] = cur;
       return { ...s, questions };
@@ -166,7 +177,7 @@ export function SurveyBuilder({ surveyId }: { surveyId: string }) {
             Edit survey
           </h1>
           <p className="max-w-xl text-sm leading-relaxed text-[var(--muted)]">
-            Public link:{" "}
+            Public link:{' '}
             <Link
               href={`/surveys/${surveyId}`}
               className="font-medium text-[var(--accent-hover)] underline decoration-indigo-500/40 underline-offset-2 hover:decoration-indigo-400"
@@ -182,7 +193,7 @@ export function SurveyBuilder({ surveyId }: { surveyId: string }) {
             disabled={saving}
             className="btn-primary"
           >
-            {saving ? "Saving…" : "Save changes"}
+            {saving ? 'Saving…' : 'Save changes'}
           </button>
           <Link href={`/surveys/${surveyId}/results`} className="btn-secondary">
             Results
@@ -202,8 +213,8 @@ export function SurveyBuilder({ surveyId }: { surveyId: string }) {
           role="status"
           className={
             err
-              ? "rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200"
-              : "rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200"
+              ? 'rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200'
+              : 'rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200'
           }
         >
           {err ?? msg}
@@ -241,7 +252,7 @@ export function SurveyBuilder({ surveyId }: { surveyId: string }) {
             type="button"
             onClick={() =>
               setSurvey((s) =>
-                s ? { ...s, questions: [...s.questions, newQuestion()] } : s
+                s ? { ...s, questions: [...s.questions, newQuestion()] } : s,
               )
             }
             className="btn-secondary w-full sm:w-auto"
@@ -299,7 +310,7 @@ export function SurveyBuilder({ surveyId }: { surveyId: string }) {
                             ...s,
                             questions: s.questions.filter((_, j) => j !== i),
                           }
-                        : s
+                        : s,
                     )
                   }
                   className="text-sm text-red-400/90 transition hover:text-red-300"
@@ -315,7 +326,7 @@ export function SurveyBuilder({ surveyId }: { surveyId: string }) {
                   className="input-field"
                 />
 
-                {q.type !== "text" && (
+                {q.type !== 'text' && (
                   <div className="space-y-3">
                     <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
                       Answer options
@@ -335,9 +346,11 @@ export function SurveyBuilder({ surveyId }: { surveyId: string }) {
                         <button
                           type="button"
                           onClick={() => {
-                            const options = q.options.filter((_, j) => j !== oi);
+                            const options = q.options.filter(
+                              (_, j) => j !== oi,
+                            );
                             updateQuestion(i, {
-                              options: options.length ? options : [""],
+                              options: options.length ? options : [''],
                             });
                           }}
                           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] text-zinc-500 transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300"
@@ -350,7 +363,7 @@ export function SurveyBuilder({ surveyId }: { surveyId: string }) {
                     <button
                       type="button"
                       onClick={() =>
-                        updateQuestion(i, { options: [...q.options, ""] })
+                        updateQuestion(i, { options: [...q.options, ''] })
                       }
                       className="text-sm font-medium text-[var(--accent-hover)] transition hover:text-indigo-200"
                     >
