@@ -1,25 +1,24 @@
-import { NextResponse } from "next/server";
-import { v2 as cloudinary } from "cloudinary";
+import { put } from '@vercel/blob';
+import { NextResponse } from 'next/server';
 
 const MAX_BYTES = 5 * 1024 * 1024;
-const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
-function configure() {
-  const cloud_name = process.env.CLOUDINARY_CLOUD_NAME;
-  const api_key = process.env.CLOUDINARY_API_KEY;
-  const api_secret = process.env.CLOUDINARY_API_SECRET;
-  if (!cloud_name || !api_key || !api_secret) {
-    return null;
-  }
-  cloudinary.config({ cloud_name, api_key, api_secret });
-  return true;
-}
+const MIME_TO_EXT: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
+};
 
 export async function POST(req: Request) {
-  if (!configure()) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN?.trim()) {
     return NextResponse.json(
-      { error: "Image upload is not configured (missing Cloudinary env vars)." },
-      { status: 503 }
+      {
+        error:
+          'Image upload is not configured (set BLOB_READ_WRITE_TOKEN — use `vercel env pull` or the Vercel dashboard).',
+      },
+      { status: 503 },
     );
   }
 
@@ -27,48 +26,56 @@ export async function POST(req: Request) {
   try {
     form = await req.formData();
   } catch {
-    return NextResponse.json({ error: "Invalid form data" }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid form data' }, { status: 400 });
   }
 
-  const file = form.get("file");
+  const file = form.get('file');
   if (!file || !(file instanceof File)) {
-    return NextResponse.json({ error: "Missing file" }, { status: 400 });
+    return NextResponse.json({ error: 'Missing file' }, { status: 400 });
   }
   if (!ALLOWED.has(file.type)) {
     return NextResponse.json(
-      { error: "Only JPEG, PNG, WebP, or GIF images are allowed." },
-      { status: 400 }
+      { error: 'Only JPEG, PNG, WebP, or GIF images are allowed.' },
+      { status: 400 },
     );
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
   if (buffer.length === 0) {
-    return NextResponse.json({ error: "Empty file" }, { status: 400 });
+    return NextResponse.json({ error: 'Empty file' }, { status: 400 });
   }
   if (buffer.length > MAX_BYTES) {
     return NextResponse.json(
-      { error: "Image must be 5 MB or smaller." },
-      { status: 400 }
+      { error: 'Image must be 5 MB or smaller.' },
+      { status: 400 },
     );
   }
 
-  const folder =
-    process.env.CLOUDINARY_UPLOAD_FOLDER?.trim() || "survey-app/shop-images";
+  const ext = MIME_TO_EXT[file.type] ?? '.img';
+  const pathname = `survey-app/shop-images/${crypto.randomUUID()}${ext}`;
 
   try {
-    const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        { folder, resource_type: "image" },
-        (err, res) => {
-          if (err || !res?.secure_url) reject(err ?? new Error("Upload failed"));
-          else resolve({ secure_url: res.secure_url });
-        }
-      );
-      stream.end(buffer);
+    const blob = await put(pathname, buffer, {
+      access: 'public',
+      contentType: file.type,
+      addRandomSuffix: false,
     });
-    return NextResponse.json({ url: result.secure_url });
+    return NextResponse.json({ url: blob.url });
   } catch (e) {
     console.error(e);
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+    const message = e instanceof Error ? e.message : String(e);
+    if (
+      message.includes('private store') &&
+      message.includes('public access')
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Your Vercel Blob store is private-only; this app uploads public shop images. In Vercel: Storage → create a Blob store that allows public access, connect it to the project, then update BLOB_READ_WRITE_TOKEN (vercel env pull / dashboard env).',
+        },
+        { status: 503 },
+      );
+    }
+    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
   }
 }

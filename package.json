@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "cloudinary": "^2.10.0",
+    "@vercel/blob": "^2.3.3",
     "mongoose": "^8.9.5",
     "next": "^15.1.6",
     "react": "^19.0.0",

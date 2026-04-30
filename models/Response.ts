@@ -13,7 +13,7 @@ export interface IRespondentInfo {
   shopAudience?: "male" | "female" | "both";
   respondentName: string;
   whatsappContact: string;
-  /** Up to 3 Cloudinary HTTPS URLs */
+  /** Up to 3 Vercel Blob public HTTPS URLs */
   shopImageUrls: string[];
 }
 

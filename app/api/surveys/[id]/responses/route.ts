@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
 import { Survey, type ISurvey } from "@/models/Survey";
 import { SurveyResponse, type IRespondentInfo } from "@/models/Response";
+import { isVercelBlobPublicUrl } from "@/lib/shopImageUrls";
 import { getOrCreateShopOptions } from "@/lib/shopOptionsStore";
 import type { IShopCategoryOption } from "@/models/ShopOptions";
 import { isShopMarket } from "@/lib/shopMarkets";
@@ -15,19 +16,6 @@ import {
 type RouteParams = { params: Promise<{ id: string }> };
 
 const MAX_FIELD = 300;
-
-function isCloudinaryHttpsUrl(url: string): boolean {
-  try {
-    const u = new URL(url);
-    return (
-      u.protocol === "https:" &&
-      (u.hostname === "res.cloudinary.com" ||
-        u.hostname.endsWith(".res.cloudinary.com"))
-    );
-  } catch {
-    return false;
-  }
-}
 
 function parseRespondentInfo(
   raw: unknown,
@@ -155,9 +143,9 @@ function parseRespondentInfo(
         );
       }
       const u = item.trim();
-      if (!isCloudinaryHttpsUrl(u)) {
+      if (!isVercelBlobPublicUrl(u)) {
         return NextResponse.json(
-          { error: "Shop images must be valid Cloudinary (https) URLs" },
+          { error: "Shop images must be valid Vercel Blob (https) URLs" },
           { status: 400 }
         );
       }

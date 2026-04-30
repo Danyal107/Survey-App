@@ -26,6 +26,6 @@ export interface RespondentInfoPayload {
   shopAudience?: "male" | "female" | "both";
   respondentName: string;
   whatsappContact: string;
-  /** Max 3 HTTPS URLs from this app’s Cloudinary upload API */
+  /** Max 3 HTTPS URLs from this app’s Vercel Blob upload API */
   shopImageUrls: string[];
 }
