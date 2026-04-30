@@ -11,8 +11,15 @@ export type IRespondentInfo = Record<string, string | string[]>;
 export interface IResponse {
   _id: mongoose.Types.ObjectId;
   surveyId: mongoose.Types.ObjectId;
+  /** Shop profile for this submission (`Shop` collection). */
+  shopId?: mongoose.Types.ObjectId;
+  /**
+   * Respondent answers not stored on `Shop` (e.g. name, WhatsApp).
+   * Shop-related keys are in `Shop.details` when `shopId` is set.
+   */
   respondentInfo?: IRespondentInfo;
   answers: IAnswer[];
+  isDeleted?: boolean;
   createdAt: Date;
 }
 
@@ -32,8 +39,15 @@ const ResponseSchema = new Schema<IResponse>(
       required: true,
       index: true,
     },
+    shopId: {
+      type: Schema.Types.ObjectId,
+      ref: "Shop",
+      required: false,
+      index: true,
+    },
     respondentInfo: { type: Schema.Types.Mixed, required: false },
     answers: { type: [AnswerSchema], required: true },
+    isDeleted: { type: Boolean, default: false, index: true },
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );

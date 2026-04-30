@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
+import { notDeleted } from "@/lib/notDeleted";
 import { Survey, type ISurvey } from "@/models/Survey";
 import { SurveyResponse } from "@/models/Response";
 
@@ -17,7 +18,10 @@ export async function GET(_req: Request, { params }: RouteParams) {
   }
   try {
     await connectDB();
-    const survey = await Survey.findById(id).lean<ISurvey | null>();
+    const survey = await Survey.findOne({
+      _id: id,
+      ...notDeleted,
+    }).lean<ISurvey | null>();
     if (!survey) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
@@ -39,7 +43,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
   try {
     const body = await req.json();
     await connectDB();
-    const survey = await Survey.findById(id);
+    const survey = await Survey.findOne({ _id: id, ...notDeleted });
     if (!survey) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
@@ -79,11 +83,18 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
   }
   try {
     await connectDB();
-    const survey = await Survey.findByIdAndDelete(id);
+    const survey = await Survey.findOneAndUpdate(
+      { _id: id, ...notDeleted },
+      { $set: { isDeleted: true } },
+      { new: true }
+    );
     if (!survey) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-    await SurveyResponse.deleteMany({ surveyId: id });
+    await SurveyResponse.updateMany(
+      { surveyId: id, ...notDeleted },
+      { $set: { isDeleted: true } }
+    );
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error(e);

@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
+import { notDeleted } from "@/lib/notDeleted";
 import { Survey } from "@/models/Survey";
 
 export async function GET() {
   try {
     await connectDB();
-    const surveys = await Survey.find().sort({ updatedAt: -1 }).lean();
+    const surveys = await Survey.find(notDeleted)
+      .sort({ updatedAt: -1 })
+      .lean();
     return NextResponse.json(
       surveys.map((s) => ({
         ...s,

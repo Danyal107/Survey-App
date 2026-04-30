@@ -14,6 +14,7 @@ export interface ISurvey {
   title: string;
   description: string;
   questions: ISurveyQuestion[];
+  isDeleted?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,6 +39,7 @@ const SurveySchema = new Schema<ISurvey>(
     title: { type: String, required: true, trim: true },
     description: { type: String, default: "", trim: true },
     questions: { type: [QuestionSchema], default: [] },
+    isDeleted: { type: Boolean, default: false, index: true },
   },
   { timestamps: true }
 );

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
+import { notDeleted } from "@/lib/notDeleted";
 import { Survey, type ISurvey } from "@/models/Survey";
 import { SurveyResponse, type IResponse } from "@/models/Response";
 import type { QuestionType } from "@/types/survey";
@@ -15,14 +16,18 @@ export async function GET(_req: Request, { params }: RouteParams) {
 
   try {
     await connectDB();
-    const survey = await Survey.findById(surveyId).lean<ISurvey | null>();
+    const survey = await Survey.findOne({
+      _id: surveyId,
+      ...notDeleted,
+    }).lean<ISurvey | null>();
     if (!survey) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const responses = await SurveyResponse.find({ surveyId }).lean<
-      IResponse[]
-    >();
+    const responses = await SurveyResponse.find({
+      surveyId,
+      ...notDeleted,
+    }).lean<IResponse[]>();
     const totalResponses = responses.length;
 
     const byQuestion: {
